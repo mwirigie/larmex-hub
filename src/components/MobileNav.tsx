@@ -36,7 +36,7 @@ export default function MobileNav() {
   };
 
   // Don't show on auth or admin pages
-  if (location.pathname === "/auth" || location.pathname.startsWith("/admin")) return null;
+  if (location.pathname === "/auth" || location.pathname.startsWith("/ctrl-panel-lmx")) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg md:hidden">

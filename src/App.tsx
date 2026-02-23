@@ -40,8 +40,8 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/profile" element={<Profile />} />
-              {/* Admin Panel */}
-              <Route path="/admin" element={<AdminLayout />}>
+              {/* Admin Panel - obscured route */}
+              <Route path="/ctrl-panel-lmx" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="plans" element={<AdminPlans />} />
                 <Route path="users" element={<AdminUsers />} />
