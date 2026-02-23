@@ -11,6 +11,7 @@ import BrowsePlans from "./pages/BrowsePlans";
 import PlanDetail from "./pages/PlanDetail";
 import Dashboard from "./pages/Dashboard";
 import Calculator from "./pages/Calculator";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
               <Route path="/plans/:id" element={<PlanDetail />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
+              <Route path="/profile" element={<Profile />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

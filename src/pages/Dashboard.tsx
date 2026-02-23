@@ -1,25 +1,69 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, FolderOpen, Heart, CreditCard, MessageSquare, Upload, BarChart3, Settings, LogOut, Shield, Plus } from "lucide-react";
+import { Building2, FolderOpen, Heart, CreditCard, MessageSquare, Upload, BarChart3, LogOut, Shield, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+
+interface DashboardStats {
+  projects: number;
+  favorites: number;
+  purchases: number;
+  messages: number;
+  plans: number;
+  requests: number;
+  earnings: number;
+}
 
 export default function Dashboard() {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats>({ projects: 0, favorites: 0, purchases: 0, messages: 0, plans: 0, requests: 0, earnings: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
-    }
+    if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) fetchStats();
+  }, [user, role]);
+
+  const fetchStats = async () => {
+    if (!user) return;
+    setStatsLoading(true);
+
+    const isProf = role === "professional";
+
+    const [favRes, msgRes, purchRes, planRes, reqRes, earnRes] = await Promise.all([
+      supabase.from("favorites").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      supabase.from("messages").select("id", { count: "exact", head: true }).eq("receiver_id", user.id).eq("is_read", false),
+      supabase.from("plan_purchases").select("id", { count: "exact", head: true }).eq("client_id", user.id),
+      isProf ? supabase.from("house_plans").select("id", { count: "exact", head: true }).eq("professional_id", user.id) : Promise.resolve({ count: 0 }),
+      isProf ? supabase.from("project_requests").select("id", { count: "exact", head: true }).eq("professional_id", user.id) : supabase.from("project_requests").select("id", { count: "exact", head: true }).eq("client_id", user.id),
+      isProf ? supabase.from("transactions").select("amount_kes").eq("user_id", user.id).eq("status", "completed") : Promise.resolve({ data: [] }),
+    ]);
+
+    const totalEarnings = (earnRes as any).data?.reduce((sum: number, t: any) => sum + Number(t.amount_kes), 0) || 0;
+
+    setStats({
+      favorites: favRes.count || 0,
+      messages: msgRes.count || 0,
+      purchases: purchRes.count || 0,
+      plans: (planRes as any).count || 0,
+      requests: reqRes.count || 0,
+      projects: reqRes.count || 0,
+      earnings: totalEarnings,
+    });
+    setStatsLoading(false);
+  };
 
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -29,17 +73,17 @@ export default function Dashboard() {
   const isProf = role === "professional";
 
   const clientCards = [
-    { icon: FolderOpen, title: "My Projects", value: "0", desc: "Active projects" },
-    { icon: Heart, title: "Saved Plans", value: "0", desc: "Favorited plans" },
-    { icon: CreditCard, title: "Purchases", value: "0", desc: "Plans purchased" },
-    { icon: MessageSquare, title: "Messages", value: "0", desc: "Unread messages" },
+    { icon: FolderOpen, title: "My Projects", value: stats.projects.toString(), desc: "Active projects" },
+    { icon: Heart, title: "Saved Plans", value: stats.favorites.toString(), desc: "Favorited plans" },
+    { icon: CreditCard, title: "Purchases", value: stats.purchases.toString(), desc: "Plans purchased" },
+    { icon: MessageSquare, title: "Messages", value: stats.messages.toString(), desc: "Unread messages" },
   ];
 
   const profCards = [
-    { icon: Upload, title: "My Plans", value: "0", desc: "Listed plans" },
-    { icon: FolderOpen, title: "Requests", value: "0", desc: "Project requests" },
-    { icon: BarChart3, title: "Earnings", value: "KES 0", desc: "Total earnings" },
-    { icon: MessageSquare, title: "Messages", value: "0", desc: "Unread messages" },
+    { icon: Upload, title: "My Plans", value: stats.plans.toString(), desc: "Listed plans" },
+    { icon: FolderOpen, title: "Requests", value: stats.requests.toString(), desc: "Project requests" },
+    { icon: BarChart3, title: "Earnings", value: `KES ${stats.earnings.toLocaleString()}`, desc: "Total earnings" },
+    { icon: MessageSquare, title: "Messages", value: stats.messages.toString(), desc: "Unread messages" },
   ];
 
   const cards = isProf ? profCards : clientCards;
@@ -78,7 +122,6 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* Quick Actions */}
           <div className="mb-6 flex gap-3">
             {isProf ? (
               <Button asChild>
@@ -86,33 +129,29 @@ export default function Dashboard() {
               </Button>
             ) : (
               <>
-                <Button asChild>
-                  <Link to="/browse">Browse Plans</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link to="/calculator">Cost Calculator</Link>
-                </Button>
+                <Button asChild><Link to="/browse">Browse Plans</Link></Button>
+                <Button variant="outline" asChild><Link to="/calculator">Cost Calculator</Link></Button>
               </>
             )}
           </div>
 
-          {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {cards.map((card, i) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-              >
+              <motion.div key={card.title} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between pb-2">
                     <CardTitle className="text-sm font-medium text-muted-foreground">{card.title}</CardTitle>
                     <card.icon className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <p className="font-display text-2xl font-bold">{card.value}</p>
-                    <p className="text-xs text-muted-foreground">{card.desc}</p>
+                    {statsLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    ) : (
+                      <>
+                        <p className="font-display text-2xl font-bold">{card.value}</p>
+                        <p className="text-xs text-muted-foreground">{card.desc}</p>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>
