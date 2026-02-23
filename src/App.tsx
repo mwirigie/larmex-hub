@@ -11,6 +11,7 @@ import BrowsePlans from "./pages/BrowsePlans";
 import PlanDetail from "./pages/PlanDetail";
 import Dashboard from "./pages/Dashboard";
 import Calculator from "./pages/Calculator";
+import Professionals from "./pages/Professionals";
 import Profile from "./pages/Profile";
 import UploadPlan from "./pages/UploadPlan";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -39,6 +40,7 @@ const App = () => (
               <Route path="/plans/new" element={<UploadPlan />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
+              <Route path="/professionals" element={<Professionals />} />
               <Route path="/profile" element={<Profile />} />
               {/* Admin Panel - obscured route */}
               <Route path="/ctrl-panel-lmx" element={<AdminLayout />}>
