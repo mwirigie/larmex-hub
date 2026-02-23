@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Home, Search, Calculator, FolderOpen, User, Building2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User as SupaUser } from "@supabase/supabase-js";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Home, Search, Calculator, FolderOpen, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { label: "Home", icon: Home, path: "/" },
@@ -15,17 +13,7 @@ const navItems = [
 export default function MobileNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [user, setUser] = useState<SupaUser | null>(null);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user } = useAuth();
 
   const handleNav = (path: string) => {
     if ((path === "/dashboard" || path === "/profile") && !user) {
