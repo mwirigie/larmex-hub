@@ -66,7 +66,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
-  }, [user, loading, navigate]);
+    // If admin, redirect to admin panel
+    if (!loading && user && role === "admin") navigate("/ctrl-panel-lmx");
+  }, [user, role, loading, navigate]);
 
   useEffect(() => {
     if (user) fetchDashboardData();
