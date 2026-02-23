@@ -13,6 +13,12 @@ import Dashboard from "./pages/Dashboard";
 import Calculator from "./pages/Calculator";
 import Profile from "./pages/Profile";
 import UploadPlan from "./pages/UploadPlan";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminPlans from "./pages/admin/AdminPlans";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminProfessionals from "./pages/admin/AdminProfessionals";
+import AdminTransactions from "./pages/admin/AdminTransactions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,10 +36,18 @@ const App = () => (
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/browse" element={<BrowsePlans />} />
               <Route path="/plans/:id" element={<PlanDetail />} />
+              <Route path="/plans/new" element={<UploadPlan />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/plans/new" element={<UploadPlan />} />
+              {/* Admin Panel */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="plans" element={<AdminPlans />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="professionals" element={<AdminProfessionals />} />
+                <Route path="transactions" element={<AdminTransactions />} />
+              </Route>
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
