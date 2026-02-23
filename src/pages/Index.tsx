@@ -4,6 +4,11 @@ import { motion } from "framer-motion";
 import { Search, Shield, Calculator, Home, ArrowRight, Star, CheckCircle2, Building2, Users, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import heroBg from "@/assets/hero-bg.jpg";
+import categoryBungalow from "@/assets/category-bungalow.jpg";
+import categoryMaisonette from "@/assets/category-maisonette.jpg";
+import categoryApartment from "@/assets/category-apartment.jpg";
+import categoryVilla from "@/assets/category-villa.jpg";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -45,10 +50,10 @@ const features = [
 ];
 
 const popularTypes = [
-  { name: "Bungalows", count: "180+ plans", image: "🏠" },
-  { name: "Maisonettes", count: "120+ plans", image: "🏘️" },
-  { name: "Apartments", count: "90+ plans", image: "🏢" },
-  { name: "Villas", count: "60+ plans", image: "🏡" },
+  { name: "Bungalows", count: "180+ plans", image: categoryBungalow },
+  { name: "Maisonettes", count: "120+ plans", image: categoryMaisonette },
+  { name: "Apartments", count: "90+ plans", image: categoryApartment },
+  { name: "Villas", count: "60+ plans", image: categoryVilla },
 ];
 
 export default function Index() {
@@ -63,7 +68,7 @@ export default function Index() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-display text-xl font-bold text-foreground">JengaHub</span>
+            <span className="font-display text-xl font-bold text-foreground">Larmex Hub</span>
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
             <Link to="/browse" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Browse Plans</Link>
@@ -81,9 +86,13 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-16 md:py-24">
-        <div className="container">
+      {/* Hero with background image */}
+      <section className="relative overflow-hidden py-20 md:py-32">
+        <div className="absolute inset-0">
+          <img src={heroBg} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
+        </div>
+        <div className="container relative">
           <motion.div
             className="mx-auto max-w-3xl text-center"
             initial="hidden"
@@ -91,7 +100,7 @@ export default function Index() {
             variants={fadeUp}
             custom={0}
           >
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-4 py-1.5 text-sm font-medium text-foreground">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card/80 backdrop-blur-sm px-4 py-1.5 text-sm font-medium text-foreground">
               <CheckCircle2 className="h-4 w-4 text-primary" />
               Kenya's #1 Construction Marketplace
             </div>
@@ -115,7 +124,7 @@ export default function Index() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search plans (e.g. 3 bedroom bungalow)"
-                className="pl-10 h-12"
+                className="pl-10 h-12 bg-card/80 backdrop-blur-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -137,7 +146,7 @@ export default function Index() {
             custom={2}
           >
             {stats.map((stat) => (
-              <div key={stat.label} className="flex flex-col items-center rounded-xl border border-border bg-card p-4 text-center">
+              <div key={stat.label} className="flex flex-col items-center rounded-xl border border-border bg-card/80 backdrop-blur-sm p-4 text-center">
                 <stat.icon className="mb-2 h-5 w-5 text-primary" />
                 <span className="font-display text-2xl font-bold text-foreground">{stat.value}</span>
                 <span className="text-xs text-muted-foreground">{stat.label}</span>
@@ -173,11 +182,15 @@ export default function Index() {
               >
                 <Link
                   to={`/browse?type=${type.name.toLowerCase()}`}
-                  className="group flex flex-col items-center rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary hover:shadow-md"
+                  className="group block overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary hover:shadow-md"
                 >
-                  <span className="text-4xl">{type.image}</span>
-                  <h3 className="mt-3 font-display font-semibold text-foreground">{type.name}</h3>
-                  <p className="text-sm text-muted-foreground">{type.count}</p>
+                  <div className="aspect-[4/3] overflow-hidden">
+                    <img src={type.image} alt={type.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                  </div>
+                  <div className="p-4 text-center">
+                    <h3 className="font-display font-semibold text-foreground">{type.name}</h3>
+                    <p className="text-sm text-muted-foreground">{type.count}</p>
+                  </div>
                 </Link>
               </motion.div>
             ))}
@@ -196,7 +209,7 @@ export default function Index() {
             variants={fadeUp}
             custom={0}
           >
-            <h2 className="font-display text-3xl font-bold text-foreground">Why JengaHub?</h2>
+            <h2 className="font-display text-3xl font-bold text-foreground">Why Larmex Hub?</h2>
             <p className="mt-2 text-muted-foreground">Everything you need to plan and build your home in Kenya.</p>
           </motion.div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -233,7 +246,7 @@ export default function Index() {
           >
             <h2 className="font-display text-3xl font-bold text-primary-foreground">Ready to Start Building?</h2>
             <p className="mx-auto mt-3 max-w-lg text-primary-foreground/80">
-              Join thousands of Kenyans who have found their perfect house plan and trusted professionals on JengaHub.
+              Join thousands of Kenyans who have found their perfect house plan and trusted professionals on Larmex Hub.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" variant="secondary" asChild>
@@ -258,14 +271,14 @@ export default function Index() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <Building2 className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-bold text-foreground">JengaHub</span>
+              <span className="font-display text-lg font-bold text-foreground">Larmex Hub</span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
               <Link to="/browse" className="hover:text-foreground transition-colors">Browse Plans</Link>
               <Link to="/professionals" className="hover:text-foreground transition-colors">Find Professionals</Link>
               <Link to="/calculator" className="hover:text-foreground transition-colors">Cost Calculator</Link>
             </div>
-            <p className="text-sm text-muted-foreground">© 2026 JengaHub. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© 2026 Larmex Hub. All rights reserved.</p>
           </div>
         </div>
       </footer>

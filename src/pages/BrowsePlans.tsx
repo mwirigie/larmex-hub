@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import planPlaceholder from "@/assets/plan-placeholder.jpg";
 
 const counties = ["All Counties", "Nairobi", "Kiambu", "Mombasa", "Nakuru", "Kisumu", "Uasin Gishu", "Machakos", "Kajiado", "Nyeri"];
 const houseTypes = ["All Types", "Bungalow", "Maisonette", "Apartment", "Villa", "Townhouse", "Mansion"];
@@ -98,7 +99,7 @@ export default function BrowsePlans() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="hidden font-display text-lg font-bold text-foreground sm:inline">JengaHub</span>
+            <span className="hidden font-display text-lg font-bold text-foreground sm:inline">Larmex Hub</span>
           </Link>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -150,11 +151,7 @@ export default function BrowsePlans() {
               <motion.div key={plan.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
                 <Link to={`/plans/${plan.id}`} className="group block overflow-hidden rounded-xl border border-border bg-card transition-all hover:shadow-md">
                   <div className="relative aspect-[4/3] bg-muted">
-                    {plan.thumbnail_url ? (
-                      <img src={plan.thumbnail_url} alt={plan.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-4xl text-muted-foreground/30">🏠</div>
-                    )}
+                    <img src={plan.thumbnail_url || planPlaceholder} alt={plan.title} className="h-full w-full object-cover" />
                     <Badge className="absolute left-3 top-3 bg-card text-foreground capitalize">{plan.house_type}</Badge>
                     <button onClick={(e) => toggleFavorite(e, plan.id)} className="absolute right-3 top-3 rounded-full bg-card/80 p-2 backdrop-blur-sm transition-colors hover:bg-card">
                       <Heart className={`h-4 w-4 ${favorites.has(plan.id) ? "fill-destructive text-destructive" : "text-muted-foreground"}`} />
