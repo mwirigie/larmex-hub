@@ -29,6 +29,16 @@ export default function AdminLayout() {
     }
   }, [user, role, loading, navigate]);
 
+  // Timeout fallback: if loading takes more than 3 seconds, redirect
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading) {
+        navigate("/auth");
+      }
+    }, 3000);
+    return () => clearTimeout(timeout);
+  }, [loading, navigate]);
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
