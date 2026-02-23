@@ -115,7 +115,7 @@ export default function AuthPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span className="font-display text-2xl font-bold text-foreground">JengaHub</span>
+            <span className="font-display text-2xl font-bold text-foreground">Larmex Hub</span>
           </Link>
           <p className="text-sm text-muted-foreground">Kenya's Construction Marketplace</p>
         </div>

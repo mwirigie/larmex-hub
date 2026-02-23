@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
+import planPlaceholder from "@/assets/plan-placeholder.jpg";
 
 type HousePlan = Tables<"house_plans">;
 
@@ -51,10 +52,8 @@ export default function PlanDetail() {
     }
     setPlan(data);
 
-    // Increment view count
     await supabase.from("house_plans").update({ view_count: (data.view_count || 0) + 1 }).eq("id", planId);
 
-    // Fetch professional info
     const { data: profile } = await supabase
       .from("profiles")
       .select("full_name")
@@ -72,7 +71,6 @@ export default function PlanDetail() {
       is_verified: profProfile?.is_verified || false,
     });
 
-    // Fetch reviews
     const { data: reviews } = await supabase
       .from("reviews")
       .select("rating")
@@ -158,13 +156,9 @@ export default function PlanDetail() {
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-              {plan.thumbnail_url ? (
-                <img src={plan.thumbnail_url} alt={plan.title} className="h-full w-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-6xl text-muted-foreground/20">🏠</div>
-              )}
+              <img src={plan.thumbnail_url || planPlaceholder} alt={plan.title} className="h-full w-full object-cover" />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="rotate-[-30deg] font-display text-4xl font-bold text-muted-foreground/10 select-none">WATERMARKED PREVIEW</span>
+                <span className="rotate-[-30deg] font-display text-4xl font-bold text-muted-foreground/10 select-none">LARMEX HUB PREVIEW</span>
               </div>
               <Badge className="absolute left-4 top-4 capitalize">{plan.house_type}</Badge>
             </div>
