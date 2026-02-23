@@ -72,7 +72,7 @@ export default function Index() {
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
             <Link to="/browse" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Browse Plans</Link>
-            <Link to="/professionals" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Find Pros</Link>
+            <Link to="/browse" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Find Pros</Link>
             <Link to="/calculator" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Calculator</Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -255,7 +255,7 @@ export default function Index() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10" asChild>
+              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground" asChild>
                 <Link to="/browse">Browse Plans</Link>
               </Button>
             </div>
@@ -275,7 +275,7 @@ export default function Index() {
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
               <Link to="/browse" className="hover:text-foreground transition-colors">Browse Plans</Link>
-              <Link to="/professionals" className="hover:text-foreground transition-colors">Find Professionals</Link>
+              <Link to="/browse" className="hover:text-foreground transition-colors">Find Professionals</Link>
               <Link to="/calculator" className="hover:text-foreground transition-colors">Cost Calculator</Link>
             </div>
             <p className="text-sm text-muted-foreground">© 2026 Larmex Hub. All rights reserved.</p>
