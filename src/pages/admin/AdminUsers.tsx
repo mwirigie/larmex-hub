@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Search, Trash2 } from "lucide-react";
+import { Loader2, Search, ShieldCheck, ShieldOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -24,30 +24,47 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [toggling, setToggling] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
     setLoading(true);
-    // Fetch profiles and join with roles
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, full_name, email, county, created_at, avatar_url")
       .order("created_at", { ascending: false });
 
     const { data: roles } = await supabase.from("user_roles").select("user_id, role");
-
     const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
 
     setUsers(
-      (profiles || []).map(p => ({
-        ...p,
-        role: roleMap.get(p.user_id) || null,
-      }))
+      (profiles || []).map(p => ({ ...p, role: roleMap.get(p.user_id) || null }))
     );
     setLoading(false);
+  };
+
+  const toggleAdmin = async (userId: string, currentRole: string | null) => {
+    setToggling(userId);
+    try {
+      if (currentRole === "admin") {
+        // Remove admin role
+        await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "admin");
+        toast({ title: "Admin role removed" });
+      } else {
+        // If they have a role, update it; otherwise insert
+        if (currentRole) {
+          await supabase.from("user_roles").update({ role: "admin" as any }).eq("user_id", userId);
+        } else {
+          await supabase.from("user_roles").insert({ user_id: userId, role: "admin" as any });
+        }
+        toast({ title: "Admin role granted" });
+      }
+      await fetchUsers();
+    } catch {
+      toast({ title: "Failed to update role", variant: "destructive" });
+    }
+    setToggling(null);
   };
 
   const filtered = users.filter(u => {
@@ -101,6 +118,21 @@ export default function AdminUsers() {
                   {u.county && <span className="text-xs text-muted-foreground hidden sm:inline">{u.county}</span>}
                   <Badge variant="secondary" className="capitalize">{u.role || "no role"}</Badge>
                   <span className="text-xs text-muted-foreground hidden md:inline">{new Date(u.created_at).toLocaleDateString()}</span>
+                  <Button
+                    size="sm"
+                    variant={u.role === "admin" ? "destructive" : "outline"}
+                    disabled={toggling === u.user_id}
+                    onClick={() => toggleAdmin(u.user_id, u.role)}
+                    className="ml-1"
+                  >
+                    {toggling === u.user_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : u.role === "admin" ? (
+                      <><ShieldOff className="h-3.5 w-3.5 mr-1" /> Revoke</>
+                    ) : (
+                      <><ShieldCheck className="h-3.5 w-3.5 mr-1" /> Make Admin</>
+                    )}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

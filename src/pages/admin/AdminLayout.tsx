@@ -8,12 +8,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const ADMIN_BASE = "/ctrl-panel-lmx";
+
 const navItems = [
-  { label: "Dashboard", path: "/admin", icon: LayoutDashboard },
-  { label: "House Plans", path: "/admin/plans", icon: FileText },
-  { label: "Users", path: "/admin/users", icon: Users },
-  { label: "Professionals", path: "/admin/professionals", icon: Shield },
-  { label: "Transactions", path: "/admin/transactions", icon: CreditCard },
+  { label: "Dashboard", path: ADMIN_BASE, icon: LayoutDashboard },
+  { label: "House Plans", path: `${ADMIN_BASE}/plans`, icon: FileText },
+  { label: "Users", path: `${ADMIN_BASE}/users`, icon: Users },
+  { label: "Professionals", path: `${ADMIN_BASE}/professionals`, icon: Shield },
+  { label: "Transactions", path: `${ADMIN_BASE}/transactions`, icon: CreditCard },
 ];
 
 export default function AdminLayout() {
@@ -50,8 +52,8 @@ export default function AdminLayout() {
 
         <nav className="flex-1 p-3 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path || 
-              (item.path !== "/admin" && location.pathname.startsWith(item.path));
+          const isActive = location.pathname === item.path || 
+              (item.path !== ADMIN_BASE && location.pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}
@@ -93,8 +95,8 @@ export default function AdminLayout() {
         </div>
         <div className="flex overflow-x-auto border-t border-border px-2 py-1.5 gap-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path ||
-              (item.path !== "/admin" && location.pathname.startsWith(item.path));
+          const isActive = location.pathname === item.path ||
+              (item.path !== ADMIN_BASE && location.pathname.startsWith(item.path));
             return (
               <Link
                 key={item.path}
