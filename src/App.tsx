@@ -12,6 +12,7 @@ import PlanDetail from "./pages/PlanDetail";
 import Dashboard from "./pages/Dashboard";
 import Calculator from "./pages/Calculator";
 import Profile from "./pages/Profile";
+import UploadPlan from "./pages/UploadPlan";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/plans/new" element={<UploadPlan />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
