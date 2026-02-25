@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Building2, Mail, Lock, User, Phone, Eye, EyeOff } from "lucide-react";
@@ -24,6 +24,15 @@ export default function AuthPage() {
   const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (searchParams.get("reset") === "success") {
+      toast({
+        title: "Password reset successful",
+        description: "Your password has been successfully changed. Please log in.",
+      });
+    }
+  }, [searchParams, toast]);
 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

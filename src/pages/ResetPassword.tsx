@@ -1,17 +1,18 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, Lock, Eye, EyeOff } from "lucide-react";
+import { Building2, Lock, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PasswordStrengthIndicator, { validatePassword } from "@/components/PasswordStrengthIndicator";
+import { bootstrapRecoverySession } from "@/lib/password-recovery";
 
-const SESSION_TIMEOUT_MS = 8000;
-const UPDATE_TIMEOUT_MS = 12000;
+const SUCCESS_REDIRECT_MS = 2500;
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -22,33 +23,28 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [validSession, setValidSession] = useState(false);
   const [checking, setChecking] = useState(true);
-  const handled = useRef(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    if (handled.current) return;
-    handled.current = true;
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
-        setValidSession(true);
-        setChecking(false);
-        window.history.replaceState(null, "", window.location.pathname);
+    const init = async () => {
+      setChecking(true);
+      const result = await bootstrapRecoverySession();
+      if (!mounted) return;
+
+      setValidSession(result.valid);
+      setChecking(false);
+
+      if (!result.valid) {
+        setStatusMessage("This password reset link is invalid, expired, or already used.");
       }
-    });
+    };
 
-    const timeout = setTimeout(() => {
-      setChecking((prev) => {
-        if (prev) {
-          setValidSession(false);
-          return false;
-        }
-        return prev;
-      });
-    }, SESSION_TIMEOUT_MS);
+    void init();
 
     return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
+      mounted = false;
     };
   }, []);
 
@@ -59,68 +55,59 @@ export default function ResetPassword() {
     if (!validatePassword(password)) {
       toast({
         title: "Password too weak",
-        description: "Please meet all the password requirements listed below.",
+        description: "Please meet all password requirements before continuing.",
         variant: "destructive",
       });
       return;
     }
 
     if (password !== confirmPassword) {
-      toast({ title: "Passwords don't match", variant: "destructive" });
+      toast({
+        title: "Passwords do not match",
+        description: "Please ensure both password fields are identical.",
+        variant: "destructive",
+      });
       return;
     }
 
     setLoading(true);
     try {
-      const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((resolve) => {
-        setTimeout(() => {
-          resolve({
-            data: { user: null },
-            error: new Error("Password update timed out. Please request a fresh reset link."),
-          });
-        }, UPDATE_TIMEOUT_MS);
-      });
-
-      const { error } = await Promise.race([
-        supabase.auth.updateUser({ password }),
-        timeoutPromise,
-      ]);
+      const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        if (error.message?.toLowerCase().includes("same password")) {
-          toast({
-            title: "Choose a different password",
-            description: "Your new password must be different from your current password.",
-            variant: "destructive",
-          });
-        } else {
-          throw error;
-        }
-        return;
+        throw error;
       }
 
-      // Navigate immediately — don't block on signOut lock contention
-      navigate("/auth", { replace: true });
+      setStatusMessage("Your password has been successfully changed.");
+
       toast({
-        title: "Password updated successfully!",
-        description: "You've been logged out of all sessions. Please log in with your new password.",
+        title: "Password reset successful",
+        description: "Your password was updated. Redirecting to login…",
       });
 
-      // Sign out in background to invalidate sessions
-      setTimeout(() => {
-        void supabase.auth.signOut({ scope: "local" }).catch(() => {});
-      }, 0);
+      // Sign out from all devices/sessions after password change.
+      await supabase.auth.signOut({ scope: "global" });
+
+      window.setTimeout(() => {
+        navigate("/auth?tab=login&reset=success", { replace: true });
+      }, SUCCESS_REDIRECT_MS);
     } catch (error: any) {
-      const msg = error?.message || "Something went wrong";
-      if (msg.toLowerCase().includes("lock") || msg.toLowerCase().includes("timed out")) {
-        toast({
-          title: "Session busy",
-          description: "Please close duplicate tabs for this app and try once more.",
-          variant: "destructive",
-        });
+      const message = String(error?.message || "Unable to reset password.").toLowerCase();
+
+      if (message.includes("session") || message.includes("expired") || message.includes("token")) {
+        setValidSession(false);
+        setStatusMessage("Your reset link is no longer valid. Please request a new one.");
+      } else if (message.includes("same password")) {
+        setStatusMessage("Please choose a new password different from your current password.");
       } else {
-        toast({ title: "Error", description: msg, variant: "destructive" });
+        setStatusMessage(error?.message || "Unable to reset password. Please try again.");
       }
+
+      toast({
+        title: "Password reset failed",
+        description: error?.message || "Please request a new reset link and try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -146,7 +133,7 @@ export default function ResetPassword() {
           <CardHeader>
             <CardTitle>Invalid or Expired Link</CardTitle>
             <CardDescription>
-              This password reset link is invalid, expired, or has already been used.
+              {statusMessage || "This password reset link is invalid, expired, or has already been used."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -185,11 +172,19 @@ export default function ResetPassword() {
         <Card>
           <CardHeader>
             <CardTitle>Set New Password</CardTitle>
-            <CardDescription>
-              Choose a strong password for your account.
-            </CardDescription>
+            <CardDescription>Choose a strong password for your account.</CardDescription>
           </CardHeader>
           <CardContent>
+            {statusMessage === "Your password has been successfully changed." && (
+              <Alert className="mb-4">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertTitle>Password Updated</AlertTitle>
+                <AlertDescription>
+                  Your password has been successfully changed. Redirecting to login now.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
@@ -235,15 +230,13 @@ export default function ResetPassword() {
                 {confirmPassword && !passwordsMatch && (
                   <p className="text-xs text-destructive">Passwords do not match</p>
                 )}
-                {passwordsMatch && (
-                  <p className="text-xs text-green-500">Passwords match ✓</p>
-                )}
+                {passwordsMatch && <p className="text-xs text-primary">Passwords match ✓</p>}
               </div>
 
               <Button
                 type="submit"
                 className="w-full"
-                disabled={loading || !passwordValid || !passwordsMatch}
+                disabled={loading || !passwordValid || !passwordsMatch || statusMessage === "Your password has been successfully changed."}
               >
                 {loading ? "Updating…" : "Update Password"}
               </Button>
