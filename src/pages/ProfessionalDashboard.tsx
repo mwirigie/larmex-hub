@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, Save, Loader2, Camera, Shield, Briefcase, Globe, Plus, X, Upload, Star, Check, XCircle, Clock, ArrowLeft, LogOut, FileText, Eye, DollarSign, MessageSquare } from "lucide-react";
+import { Building2, Save, Loader2, Camera, Shield, Briefcase, Globe, Plus, X, Upload, Star, Check, XCircle, Clock, ArrowLeft, LogOut, FileText, Eye, DollarSign, MessageSquare, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import planPlaceholder from "@/assets/plan-placeholder.jpg";
 
 const PROFESSIONAL_CATEGORIES = [
   { value: "architect", label: "Architect" },
@@ -38,6 +39,20 @@ interface ProjectRequest {
   timeline: string | null;
   created_at: string;
   client_name?: string;
+  client_id?: string;
+}
+
+interface MyPlan {
+  id: string;
+  title: string;
+  house_type: string;
+  status: string;
+  price_kes: number;
+  view_count: number;
+  plan_code: string | null;
+  thumbnail_url: string | null;
+  created_at: string;
+  download_count: number;
 }
 
 export default function ProfessionalDashboard() {
@@ -65,6 +80,12 @@ export default function ProfessionalDashboard() {
   const [requests, setRequests] = useState<ProjectRequest[]>([]);
   const [updatingRequest, setUpdatingRequest] = useState<string | null>(null);
 
+  // My Plans
+  const [myPlans, setMyPlans] = useState<MyPlan[]>([]);
+  const [totalSales, setTotalSales] = useState(0);
+  const [totalEarnings, setTotalEarnings] = useState(0);
+  const [deletingPlan, setDeletingPlan] = useState<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && (!user || role !== "professional")) navigate("/auth");
   }, [user, role, authLoading, navigate]);
@@ -77,9 +98,11 @@ export default function ProfessionalDashboard() {
     if (!user) return;
     setLoading(true);
 
-    const [profRes, reqRes] = await Promise.all([
+    const [profRes, reqRes, plansRes, salesRes] = await Promise.all([
       supabase.from("professional_profiles").select("*").eq("user_id", user.id).single(),
       supabase.from("project_requests").select("*").eq("professional_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("house_plans").select("id, title, house_type, status, price_kes, view_count, plan_code, thumbnail_url, created_at, download_count").eq("professional_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("plan_purchases").select("plan_id, amount_kes, status").eq("status", "paid"),
     ]);
 
     if (profRes.data) {
@@ -96,6 +119,15 @@ export default function ProfessionalDashboard() {
       setPortfolio(Array.isArray(p.portfolio) ? p.portfolio : []);
     }
 
+    // Plans
+    setMyPlans((plansRes.data as any) || []);
+
+    // Sales & earnings for this professional's plans
+    const planIds = new Set((plansRes.data || []).map((p: any) => p.id));
+    const mySales = (salesRes.data || []).filter((s: any) => planIds.has(s.plan_id));
+    setTotalSales(mySales.length);
+    setTotalEarnings(mySales.reduce((sum: number, s: any) => sum + Number(s.amount_kes || 0), 0));
+
     // Enrich requests with client names
     const reqs = reqRes.data || [];
     if (reqs.length > 0) {
@@ -108,6 +140,19 @@ export default function ProfessionalDashboard() {
     }
 
     setLoading(false);
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    if (!confirm("Delete this plan permanently?")) return;
+    setDeletingPlan(planId);
+    const { error } = await supabase.from("house_plans").delete().eq("id", planId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Plan deleted" });
+      setMyPlans((prev) => prev.filter((p) => p.id !== planId));
+    }
+    setDeletingPlan(null);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -221,6 +266,15 @@ export default function ProfessionalDashboard() {
     }
   };
 
+  const planStatusColor = (s: string) => {
+    switch (s) {
+      case "approved": return "bg-emerald-500/10 text-emerald-600";
+      case "pending": return "bg-amber-500/10 text-amber-600";
+      case "rejected": return "bg-destructive/10 text-destructive";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
@@ -249,12 +303,100 @@ export default function ProfessionalDashboard() {
             </Button>
           </div>
 
-          <Tabs defaultValue="profile" className="space-y-4">
+          <Tabs defaultValue="plans" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="plans">My Plans ({myPlans.length})</TabsTrigger>
               <TabsTrigger value="profile">Edit Profile</TabsTrigger>
               <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
               <TabsTrigger value="requests">Requests ({requests.length})</TabsTrigger>
             </TabsList>
+
+            {/* My Plans Tab */}
+            <TabsContent value="plans">
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{myPlans.length}</p>
+                    <p className="text-xs text-muted-foreground">Total Plans</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">{totalSales}</p>
+                    <p className="text-xs text-muted-foreground">Total Sales</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">KES {totalEarnings.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Total Earnings</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="flex justify-end mb-3">
+                <Button asChild>
+                  <Link to="/plans/new"><Plus className="mr-2 h-4 w-4" /> Upload New Plan</Link>
+                </Button>
+              </div>
+
+              {myPlans.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <FileText className="mx-auto h-10 w-10 text-muted-foreground/30 mb-3" />
+                    <p className="text-muted-foreground">You haven't uploaded any plans yet.</p>
+                    <Button asChild className="mt-4">
+                      <Link to="/plans/new">Upload Your First Plan</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {myPlans.map((plan) => (
+                    <Card key={plan.id}>
+                      <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4">
+                        <img
+                          src={plan.thumbnail_url || planPlaceholder}
+                          alt={plan.title}
+                          className="h-16 w-24 rounded-lg object-cover shrink-0"
+                          onContextMenu={(e) => e.preventDefault()}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-foreground truncate">{plan.title}</h3>
+                          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                            {plan.plan_code && <span className="font-mono">{plan.plan_code}</span>}
+                            <span className="capitalize">{plan.house_type}</span>
+                            <span>·</span>
+                            <span>KES {plan.price_kes.toLocaleString()}</span>
+                            <span>·</span>
+                            <span>{plan.view_count} views</span>
+                            <span>·</span>
+                            <span>{plan.download_count} downloads</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{new Date(plan.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge className={`${planStatusColor(plan.status)} capitalize`}>{plan.status}</Badge>
+                          <Button size="sm" variant="outline" asChild>
+                            <Link to={`/plans/${plan.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive"
+                            onClick={() => handleDeletePlan(plan.id)}
+                            disabled={deletingPlan === plan.id}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
 
             {/* Profile Tab */}
             <TabsContent value="profile">
@@ -361,7 +503,7 @@ export default function ProfessionalDashboard() {
                       {portfolio.map((item, idx) => (
                         <div key={idx} className="relative overflow-hidden rounded-lg border border-border">
                           {item.image_url && (
-                            <img src={item.image_url} alt="" className="aspect-video w-full object-cover" />
+                            <img src={item.image_url} alt="" className="aspect-video w-full object-cover" onContextMenu={(e) => e.preventDefault()} />
                           )}
                           {item.description && (
                             <p className="p-3 text-sm text-muted-foreground">{item.description}</p>

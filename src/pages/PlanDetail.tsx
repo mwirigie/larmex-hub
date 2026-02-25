@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Heart, Share2, BedDouble, Bath, Maximize, MapPin, Building2, Shield, Star, ShoppingCart, Loader2 } from "lucide-react";
+import { ArrowLeft, Heart, Share2, BedDouble, Bath, Maximize, MapPin, Building2, Shield, Star, ShoppingCart, Loader2, Download, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -29,13 +29,18 @@ export default function PlanDetail() {
   const [isFavorited, setIsFavorited] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
   const [avgRating, setAvgRating] = useState(0);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (id) fetchPlan(id);
   }, [id]);
 
   useEffect(() => {
-    if (user && id) checkFavorite();
+    if (user && id) {
+      checkFavorite();
+      checkPurchase();
+    }
   }, [user, id]);
 
   const fetchPlan = async (planId: string) => {
@@ -95,6 +100,18 @@ export default function PlanDetail() {
     setIsFavorited((data?.length || 0) > 0);
   };
 
+  const checkPurchase = async () => {
+    if (!user || !id) return;
+    const { data } = await supabase
+      .from("plan_purchases")
+      .select("id")
+      .eq("client_id", user.id)
+      .eq("plan_id", id)
+      .eq("status", "paid")
+      .limit(1);
+    setHasPurchased((data?.length || 0) > 0);
+  };
+
   const toggleFavorite = async () => {
     if (!user) {
       toast({ title: "Sign in required", description: "Please log in to save plans.", variant: "destructive" });
@@ -118,6 +135,48 @@ export default function PlanDetail() {
     toast({ title: "Coming soon", description: "M-Pesa payment integration is coming soon!" });
   };
 
+  const handleSecureDownload = async () => {
+    if (!user || !id) return;
+    setDownloading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("secure-pdf-download", {
+        body: null,
+        headers: { "Content-Type": "application/json" },
+        method: "GET",
+      });
+
+      // Use fetch directly since we need query params
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/secure-pdf-download?plan_id=${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        }
+      );
+
+      const result = await response.json();
+      
+      if (!response.ok) {
+        toast({ title: "Download failed", description: result.error || "Unable to download", variant: "destructive" });
+        return;
+      }
+
+      // Open signed URL in new tab for download
+      window.open(result.url, "_blank");
+      toast({ title: "Download started", description: "Your PDF is downloading." });
+    } catch (err: any) {
+      toast({ title: "Error", description: "Failed to generate download link.", variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -136,8 +195,13 @@ export default function PlanDetail() {
     );
   }
 
+  const isOwner = user?.id === plan.professional_id;
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" onContextMenu={(e) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "IMG") e.preventDefault();
+    }}>
       <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="container flex h-14 items-center justify-between">
           <Link to="/browse" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -155,16 +219,42 @@ export default function PlanDetail() {
       <main className="container py-6">
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted">
-              <img src={plan.thumbnail_url || planPlaceholder} alt={plan.title} className="h-full w-full object-cover" />
+            <div className="relative aspect-[16/10] overflow-hidden rounded-xl bg-muted select-none">
+              <img
+                src={plan.thumbnail_url || planPlaceholder}
+                alt={plan.title}
+                className="h-full w-full object-cover pointer-events-none"
+                draggable={false}
+              />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="rotate-[-30deg] font-display text-4xl font-bold text-muted-foreground/10 select-none">LARMEX HUB PREVIEW</span>
+                <span className="rotate-[-30deg] font-display text-4xl font-bold text-muted-foreground/10 select-none pointer-events-none">
+                  LARMEX HUB PREVIEW
+                </span>
               </div>
               <Badge className="absolute left-4 top-4 capitalize">{plan.house_type}</Badge>
             </div>
 
+            {/* Image gallery */}
+            {plan.images && plan.images.length > 0 && (
+              <div className="mt-4 grid grid-cols-4 gap-2">
+                {plan.images.map((img, i) => (
+                  <div key={i} className="relative aspect-square overflow-hidden rounded-lg bg-muted select-none">
+                    <img src={img} alt={`View ${i + 1}`} className="h-full w-full object-cover pointer-events-none" draggable={false} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="rotate-[-30deg] text-[10px] font-bold text-muted-foreground/15 select-none">PREVIEW</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6">
-              <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">{plan.title}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">{plan.title}</h1>
+                {(plan as any).plan_code && (
+                  <Badge variant="outline" className="font-mono text-xs">{(plan as any).plan_code}</Badge>
+                )}
+              </div>
               <div className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
                 <MapPin className="h-4 w-4" /> {plan.county || "Kenya"} {plan.land_size && `· ${plan.land_size} plot`}
               </div>
@@ -184,13 +274,31 @@ export default function PlanDetail() {
                 ))}
               </div>
 
+              {(plan as any).estimated_cost > 0 && (
+                <div className="mt-4 rounded-lg border border-border bg-card p-3">
+                  <p className="text-sm text-muted-foreground">Estimated Construction Cost</p>
+                  <p className="font-display text-lg font-bold text-foreground">KES {Number((plan as any).estimated_cost).toLocaleString()}</p>
+                </div>
+              )}
+
               <Separator className="my-6" />
+
+              {(plan as any).short_description && (
+                <p className="text-sm font-medium text-foreground mb-2">{(plan as any).short_description}</p>
+              )}
 
               {plan.description && (
                 <>
                   <h2 className="font-display text-lg font-semibold text-foreground">Description</h2>
                   <p className="mt-2 leading-relaxed text-muted-foreground">{plan.description}</p>
                 </>
+              )}
+
+              {(plan as any).style && (
+                <div className="mt-4">
+                  <span className="text-sm text-muted-foreground">Style: </span>
+                  <Badge variant="outline">{(plan as any).style}</Badge>
+                </div>
               )}
 
               {plan.features && plan.features.length > 0 && (
@@ -214,10 +322,27 @@ export default function PlanDetail() {
               <div className="rounded-xl border border-border bg-card p-6">
                 <p className="text-sm text-muted-foreground">Plan Price</p>
                 <p className="font-display text-3xl font-bold text-foreground">KES {plan.price_kes.toLocaleString()}</p>
-                <Button className="mt-4 w-full" size="lg" onClick={handlePurchase}>
-                  <ShoppingCart className="mr-2 h-4 w-4" /> Purchase Plan
-                </Button>
-                <p className="mt-2 text-center text-xs text-muted-foreground">Instant access to full PDF after payment</p>
+
+                {hasPurchased || isOwner ? (
+                  <Button className="mt-4 w-full" size="lg" onClick={handleSecureDownload} disabled={downloading}>
+                    {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download PDF
+                  </Button>
+                ) : (
+                  <Button className="mt-4 w-full" size="lg" onClick={handlePurchase}>
+                    <ShoppingCart className="mr-2 h-4 w-4" /> Purchase Plan
+                  </Button>
+                )}
+
+                {!hasPurchased && !isOwner && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Lock className="h-3.5 w-3.5" />
+                    <span>Full PDF available after purchase</span>
+                  </div>
+                )}
+                {(hasPurchased || isOwner) && (
+                  <p className="mt-2 text-center text-xs text-muted-foreground">Secure download · Link expires in 5 minutes</p>
+                )}
               </div>
 
               {professional && (
@@ -237,10 +362,18 @@ export default function PlanDetail() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" className="mt-4 w-full">View Profile</Button>
-                  <Button variant="ghost" className="mt-2 w-full">Send Message</Button>
+                  <Button variant="outline" className="mt-4 w-full" asChild>
+                    <Link to={`/professional/${plan.professional_id}`}>View Profile</Link>
+                  </Button>
+                  <Button variant="ghost" className="mt-2 w-full" asChild>
+                    <Link to={`/messages/${plan.professional_id}`}>Send Message</Link>
+                  </Button>
                 </div>
               )}
+
+              <div className="rounded-lg border border-border bg-muted/50 p-3 text-center">
+                <p className="text-xs text-muted-foreground">{plan.view_count} views · {(plan as any).download_count || 0} downloads</p>
+              </div>
             </div>
           </div>
         </div>
@@ -249,9 +382,16 @@ export default function PlanDetail() {
       <div className="fixed bottom-16 left-0 right-0 border-t border-border bg-card p-3 md:hidden">
         <div className="container flex items-center justify-between">
           <p className="font-display text-xl font-bold text-foreground">KES {plan.price_kes.toLocaleString()}</p>
-          <Button size="lg" onClick={handlePurchase}>
-            <ShoppingCart className="mr-2 h-4 w-4" /> Purchase
-          </Button>
+          {hasPurchased || isOwner ? (
+            <Button size="lg" onClick={handleSecureDownload} disabled={downloading}>
+              {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              Download
+            </Button>
+          ) : (
+            <Button size="lg" onClick={handlePurchase}>
+              <ShoppingCart className="mr-2 h-4 w-4" /> Purchase
+            </Button>
+          )}
         </div>
       </div>
     </div>

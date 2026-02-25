@@ -1,1 +1,4 @@
 project_id = "qrssqdhhwnlmblgeidxe"
+
+[functions.secure-pdf-download]
+verify_jwt = false

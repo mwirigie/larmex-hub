@@ -14,6 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      download_logs: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: string | null
+          plan_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          plan_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          plan_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "download_logs_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "house_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       favorites: {
         Row: {
           created_at: string
@@ -51,16 +83,22 @@ export type Database = {
           county: string | null
           created_at: string
           description: string | null
+          download_count: number
+          estimated_cost: number | null
           features: string[] | null
           floors: number
           house_type: Database["public"]["Enums"]["house_type"]
           id: string
           images: string[] | null
+          is_featured: boolean
           land_size: string | null
           pdf_url: string | null
+          plan_code: string | null
           price_kes: number
           professional_id: string
+          short_description: string | null
           status: Database["public"]["Enums"]["plan_status"]
+          style: string | null
           thumbnail_url: string | null
           title: string
           updated_at: string
@@ -73,16 +111,22 @@ export type Database = {
           county?: string | null
           created_at?: string
           description?: string | null
+          download_count?: number
+          estimated_cost?: number | null
           features?: string[] | null
           floors?: number
           house_type?: Database["public"]["Enums"]["house_type"]
           id?: string
           images?: string[] | null
+          is_featured?: boolean
           land_size?: string | null
           pdf_url?: string | null
+          plan_code?: string | null
           price_kes?: number
           professional_id: string
+          short_description?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
+          style?: string | null
           thumbnail_url?: string | null
           title: string
           updated_at?: string
@@ -95,16 +139,22 @@ export type Database = {
           county?: string | null
           created_at?: string
           description?: string | null
+          download_count?: number
+          estimated_cost?: number | null
           features?: string[] | null
           floors?: number
           house_type?: Database["public"]["Enums"]["house_type"]
           id?: string
           images?: string[] | null
+          is_featured?: boolean
           land_size?: string | null
           pdf_url?: string | null
+          plan_code?: string | null
           price_kes?: number
           professional_id?: string
+          short_description?: string | null
           status?: Database["public"]["Enums"]["plan_status"]
+          style?: string | null
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
