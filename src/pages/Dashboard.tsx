@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   Building2, FolderOpen, Heart, CreditCard, MessageSquare,
   LogOut, Loader2, FileText, BarChart3, Shield, Eye,
-  ArrowRight, BedDouble, Mail
+  ArrowRight, BedDouble, Mail, Star
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -146,6 +146,7 @@ export default function Dashboard() {
             <div className="flex gap-3">
               <Button asChild><Link to="/messages"><MessageSquare className="mr-2 h-4 w-4" /> Messages</Link></Button>
               <Button asChild variant="secondary"><Link to="/hire">Hire Professional</Link></Button>
+              <Button variant="outline" asChild><Link to="/reviews"><Star className="mr-2 h-4 w-4" /> My Reviews</Link></Button>
               <Button variant="outline" asChild><Link to="/browse">Browse Plans</Link></Button>
             </div>
           </div>
@@ -219,11 +220,18 @@ export default function Dashboard() {
                         </div>
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <Badge className={`${getStatusColor(req.status)} capitalize`}>{req.status}</Badge>
-                          {(req as any).professional_id && (
-                            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                              <Link to={`/messages/${(req as any).professional_id}`} state={{ from: "/dashboard" }}><Mail className="mr-1 h-3 w-3" /> Message</Link>
-                            </Button>
-                          )}
+                          <div className="flex gap-1">
+                            {req.status === "completed" && (req as any).professional_id && (
+                              <Button variant="default" size="sm" className="h-7 text-xs" asChild>
+                                <Link to="/reviews"><Star className="mr-1 h-3 w-3" /> Review</Link>
+                              </Button>
+                            )}
+                            {(req as any).professional_id && (
+                              <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                                <Link to={`/messages/${(req as any).professional_id}`} state={{ from: "/dashboard" }}><Mail className="mr-1 h-3 w-3" /> Message</Link>
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
