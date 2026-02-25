@@ -135,7 +135,7 @@ export default function Dashboard() {
       const { error: reviewErr } = await supabase.from("reviews").insert({
         reviewer_id: user.id,
         professional_id: profId,
-        plan_id: selectedReq.id,
+        plan_id: null,
         rating,
         comment: reviewComment || null,
       });
