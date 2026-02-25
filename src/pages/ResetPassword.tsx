@@ -17,29 +17,81 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [validSession, setValidSession] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    // Check if there's already a session (user arrived via recovery link)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setValidSession(true);
+    let cancelled = false;
+
+    const establishRecoverySession = async () => {
+      try {
+        // 1. Try to extract tokens from URL hash (Supabase puts them there on redirect)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get("access_token");
+        const refreshToken = hashParams.get("refresh_token");
+        const type = hashParams.get("type");
+
+        if (accessToken && refreshToken) {
+          // Explicitly set the session from the recovery tokens
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (!error && !cancelled) {
+            setValidSession(true);
+            // Clean up the hash from the URL
+            window.history.replaceState(null, "", window.location.pathname);
+            setChecking(false);
+            return;
+          }
+        }
+
+        // 2. Also check query params (some redirect formats use these)
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get("code");
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error && !cancelled) {
+            setValidSession(true);
+            window.history.replaceState(null, "", window.location.pathname);
+            setChecking(false);
+            return;
+          }
+        }
+
+        // 3. Check if there's already a valid session (user may have been redirected and session already set)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && !cancelled) {
+          setValidSession(true);
+          setChecking(false);
+          return;
+        }
+
+        // 4. Listen for auth state changes as final fallback
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+          if (cancelled) return;
+          if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+            setValidSession(true);
+            setChecking(false);
+          }
+        });
+
+        // Wait a short time for the auth state change, then give up
+        setTimeout(() => {
+          if (!cancelled) {
+            setChecking(false);
+            subscription.unsubscribe();
+          }
+        }, 3000);
+
+        return () => subscription.unsubscribe();
+      } catch (err) {
+        console.error("Error establishing recovery session:", err);
+        if (!cancelled) setChecking(false);
       }
-    });
+    };
 
-    // Also listen for the PASSWORD_RECOVERY event
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-        setValidSession(true);
-      }
-    });
-
-    // Check URL hash as fallback
-    const hash = window.location.hash;
-    if (hash && (hash.includes("type=recovery") || hash.includes("access_token"))) {
-      setValidSession(true);
-    }
-
-    return () => subscription.unsubscribe();
+    establishRecoverySession();
+    return () => { cancelled = true; };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -55,8 +107,22 @@ export default function ResetPassword() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password });
-      if (error) throw error;
-      toast({ title: "Password updated!", description: "You can now log in with your new password." });
+      if (error) {
+        // Handle specific error for same password
+        if (error.message?.toLowerCase().includes("same password")) {
+          toast({
+            title: "Choose a different password",
+            description: "Your new password must be different from your current password.",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
+      // Sign out after password change so user logs in fresh
+      await supabase.auth.signOut();
+      toast({ title: "Password updated!", description: "Please log in with your new password." });
       navigate("/auth");
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -64,6 +130,19 @@ export default function ResetPassword() {
       setLoading(false);
     }
   };
+
+  if (checking) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <p className="mt-4 text-sm text-muted-foreground">Verifying your reset link...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (!validSession) {
     return (
