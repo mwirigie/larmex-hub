@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+const PASSWORD_UPDATE_TIMEOUT_MS = 12000;
+
 export default function ResetPassword() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -24,28 +26,14 @@ export default function ResetPassword() {
     if (handled.current) return;
     handled.current = true;
 
-    // Listen for the PASSWORD_RECOVERY event that Supabase fires
-    // when it processes the recovery token from the URL hash/params.
-    // This is the ONLY thing we need – Supabase's JS client automatically
-    // parses the URL fragment and establishes the session for us.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "PASSWORD_RECOVERY" && session) {
-          setValidSession(true);
-          setChecking(false);
-          // Clean up URL so the token can't be reused
-          window.history.replaceState(null, "", window.location.pathname);
-        } else if (event === "SIGNED_IN" && session) {
-          // Fallback: some flows fire SIGNED_IN instead of PASSWORD_RECOVERY
-          setValidSession(true);
-          setChecking(false);
-          window.history.replaceState(null, "", window.location.pathname);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        setValidSession(true);
+        setChecking(false);
+        window.history.replaceState(null, "", window.location.pathname);
       }
-    );
+    });
 
-    // Give Supabase client time to process the URL tokens.
-    // If no auth event fires within 5s, the link is invalid/expired.
     const timeout = setTimeout(() => {
       setChecking((prev) => {
         if (prev) {
@@ -65,6 +53,8 @@ export default function ResetPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (loading) return;
+
     if (password !== confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
@@ -76,7 +66,19 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      const timeoutPromise = new Promise<{ data: { user: null }; error: Error }>((resolve) => {
+        setTimeout(() => {
+          resolve({
+            data: { user: null },
+            error: new Error("Password update timed out. Please request a fresh reset link."),
+          });
+        }, PASSWORD_UPDATE_TIMEOUT_MS);
+      });
+
+      const { error } = await Promise.race([
+        supabase.auth.updateUser({ password }),
+        timeoutPromise,
+      ]);
 
       if (error) {
         if (error.message?.toLowerCase().includes("same password")) {
@@ -91,15 +93,20 @@ export default function ResetPassword() {
         return;
       }
 
-      await supabase.auth.signOut();
+      // Don't block navigation on signOut lock contention.
+      navigate("/auth", { replace: true });
       toast({ title: "Password updated!", description: "Please log in with your new password." });
-      navigate("/auth");
+      setTimeout(() => {
+        void supabase.auth.signOut({ scope: "local" }).catch(() => {
+          // no-op
+        });
+      }, 0);
     } catch (error: any) {
-      const msg = error.message || "Something went wrong";
-      if (msg.includes("lock") || msg.includes("timed out")) {
+      const msg = error?.message || "Something went wrong";
+      if (msg.toLowerCase().includes("lock") || msg.toLowerCase().includes("timed out")) {
         toast({
-          title: "Browser busy",
-          description: "Please close other tabs of this site and try again.",
+          title: "Session busy",
+          description: "Please close duplicate tabs for this app and try once more.",
           variant: "destructive",
         });
       } else {
@@ -179,7 +186,11 @@ export default function ResetPassword() {
                     required
                     minLength={6}
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
