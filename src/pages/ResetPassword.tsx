@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Building2, Lock, Eye, EyeOff } from "lucide-react";
@@ -18,102 +18,53 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [validSession, setValidSession] = useState(false);
   const [checking, setChecking] = useState(true);
+  const handled = useRef(false);
 
   useEffect(() => {
-    let isMounted = true;
-    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+    if (handled.current) return;
+    handled.current = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!isMounted) return;
-      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
-        setValidSession(true);
-        setChecking(false);
-      }
-    });
-
-    const establishRecoverySession = async () => {
-      try {
-        const searchParams = new URLSearchParams(window.location.search);
-        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-
-        const tokenHash = searchParams.get("token_hash") ?? hashParams.get("token_hash");
-        const type = (searchParams.get("type") ?? hashParams.get("type")) as "recovery" | null;
-        const code = searchParams.get("code");
-        const accessToken = hashParams.get("access_token");
-        const refreshToken = hashParams.get("refresh_token");
-
-        // Flow A: token_hash + type=recovery (recommended)
-        if (tokenHash && type === "recovery") {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: "recovery",
-          });
-          if (!error && isMounted) {
-            setValidSession(true);
-            setChecking(false);
-            window.history.replaceState(null, "", window.location.pathname);
-            return;
-          }
-        }
-
-        // Flow B: PKCE code exchange
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error && isMounted) {
-            setValidSession(true);
-            setChecking(false);
-            window.history.replaceState(null, "", window.location.pathname);
-            return;
-          }
-        }
-
-        // Flow C: implicit flow tokens in hash
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (!error && isMounted) {
-            setValidSession(true);
-            setChecking(false);
-            window.history.replaceState(null, "", window.location.pathname);
-            return;
-          }
-        }
-
-        // Final fallback: already-established session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session && isMounted) {
+    // Listen for the PASSWORD_RECOVERY event that Supabase fires
+    // when it processes the recovery token from the URL hash/params.
+    // This is the ONLY thing we need – Supabase's JS client automatically
+    // parses the URL fragment and establishes the session for us.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === "PASSWORD_RECOVERY" && session) {
           setValidSession(true);
           setChecking(false);
-          return;
-        }
-
-        fallbackTimer = setTimeout(() => {
-          if (!isMounted) return;
-          setValidSession(false);
+          // Clean up URL so the token can't be reused
+          window.history.replaceState(null, "", window.location.pathname);
+        } else if (event === "SIGNED_IN" && session) {
+          // Fallback: some flows fire SIGNED_IN instead of PASSWORD_RECOVERY
+          setValidSession(true);
           setChecking(false);
-        }, 2500);
-      } catch (error) {
-        console.error("Recovery session bootstrap failed:", error);
-        if (isMounted) {
-          setValidSession(false);
-          setChecking(false);
+          window.history.replaceState(null, "", window.location.pathname);
         }
       }
-    };
+    );
 
-    establishRecoverySession();
+    // Give Supabase client time to process the URL tokens.
+    // If no auth event fires within 5s, the link is invalid/expired.
+    const timeout = setTimeout(() => {
+      setChecking((prev) => {
+        if (prev) {
+          setValidSession(false);
+          return false;
+        }
+        return prev;
+      });
+    }, 5000);
 
     return () => {
-      isMounted = false;
-      if (fallbackTimer) clearTimeout(fallbackTimer);
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (password !== confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
@@ -125,36 +76,17 @@ export default function ResetPassword() {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          title: "Reset session expired",
-          description: "Please request a new password reset link and try again.",
-          variant: "destructive",
-        });
-        navigate("/forgot-password");
-        return;
-      }
+      const { error } = await supabase.auth.updateUser({ password });
 
-      const result = await Promise.race([
-        supabase.auth.updateUser({ password }),
-        new Promise<{ error: Error }>((resolve) =>
-          setTimeout(
-            () => resolve({ error: new Error("Password update timed out. Please request a new reset link.") }),
-            15000
-          )
-        ),
-      ]);
-
-      if (result.error) {
-        if (result.error.message?.toLowerCase().includes("same password")) {
+      if (error) {
+        if (error.message?.toLowerCase().includes("same password")) {
           toast({
             title: "Choose a different password",
             description: "Your new password must be different from your current password.",
             variant: "destructive",
           });
         } else {
-          throw result.error;
+          throw error;
         }
         return;
       }
@@ -163,7 +95,16 @@ export default function ResetPassword() {
       toast({ title: "Password updated!", description: "Please log in with your new password." });
       navigate("/auth");
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      const msg = error.message || "Something went wrong";
+      if (msg.includes("lock") || msg.includes("timed out")) {
+        toast({
+          title: "Browser busy",
+          description: "Please close other tabs of this site and try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }
