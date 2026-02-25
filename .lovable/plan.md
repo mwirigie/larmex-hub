@@ -1,175 +1,81 @@
 
 
-# JengaHub - Kenya's Construction Marketplace
+# In-App Messaging Between Clients and Professionals
 
 ## Overview
-A mobile-first marketplace connecting Kenyan homebuilders with house plans and verified construction professionals (architects & engineers). Clean, professional design with trust-building elements.
+Build a real-time messaging system that activates once a client sends a project request to a professional. Both parties can then communicate within the context of that project request.
 
-## Backend: Lovable Cloud (Supabase)
-- PostgreSQL database with full RLS security
-- Supabase Auth (Email + Google OAuth + Phone OTP)
-- Supabase Storage for plans, portfolios, verification documents
-- Edge functions for payment processing and verification workflows
+## What Already Exists
+- A `messages` table with `sender_id`, `receiver_id`, `content`, `is_read`, `created_at` columns
+- RLS policies allowing users to send messages (INSERT where `auth.uid() = sender_id`), view their own messages (SELECT), and mark as read (UPDATE on receiver)
+- Dashboard already counts unread messages
+- No dedicated messaging UI exists yet
 
----
+## Plan
 
-## Phase 1: Foundation & Authentication
+### 1. Create a Messages Page (`src/pages/Messages.tsx`)
+- Shows a conversation list (threads) grouped by the other party
+- Each thread shows the other person's name, last message preview, unread count, and timestamp
+- Fetches all messages where the user is sender or receiver, groups by the other user's ID
+- Links to individual conversation view
 
-### User Registration & Login
-- Email/password, Google OAuth, and phone OTP sign-in
-- Role selection during signup: **Client** or **Professional** (Architect/Engineer)
-- Profile creation with relevant fields per role
-- Secure role-based access using a separate `user_roles` table
+### 2. Create a Conversation Component (`src/pages/Conversation.tsx`)
+- Route: `/messages/:userId` where `userId` is the other party
+- Shows the full chat history between the current user and the other user
+- Input field at the bottom to send new messages
+- Auto-scrolls to the latest message
+- Marks messages as read when the conversation is opened
+- Shows the other user's name and a back button in the header
 
-### Database Schema
-- `profiles` – user info, avatar, phone, location
-- `user_roles` – role management (client, professional, admin)
-- `professional_profiles` – license info, specialization, verification status, bio
-- `house_plans` – title, description, bedrooms, land size, price, images, PDF, status
-- `plan_purchases` – purchase records linked to payment
-- `favorites` – saved plans per user
-- `project_requests` – custom design requests from clients
-- `reviews` – client reviews of professionals
-- `messages` – chat between clients and professionals
-- `verification_documents` – ID/license uploads for admin review
-- `transactions` – payment records with commission tracking
+### 3. Enable Realtime on Messages Table (Database Migration)
+- `ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;`
+- This allows new messages to appear instantly without page refresh
 
----
+### 4. Add "Message" Button to Key Touchpoints
+- **Professional Dashboard (Requests tab)**: Add a "Message" button on each project request card so professionals can message the client
+- **Client Dashboard (Projects tab)**: Add a "Message" button on each project request so clients can message the professional
+- **HireProfessional page**: After a hire request is submitted, show a link to message the professional
+- **ProfessionalPublicProfile**: Add a "Message" button (only if a project request exists between them)
 
-## Phase 2: Plan Marketplace
+### 5. Add Messages to Navigation
+- Update `MobileNav.tsx`: Replace one nav item or add a Messages icon with unread badge
+- Add `/messages` and `/messages/:userId` routes to `App.tsx`
 
-### Browse & Search Plans
-- Card-based grid layout with plan thumbnails
-- Filter by: bedrooms, land size, budget range, house type, county
-- Sort by: price, popularity, newest
-- Watermarked preview images (full resolution after purchase)
+### 6. Real-time Message Updates
+- Subscribe to `postgres_changes` on the `messages` table filtered by the current user
+- New messages appear instantly in the conversation view
+- Unread count updates in the nav/dashboard
 
-### Plan Detail Page
-- Image gallery with watermarked previews
-- Floor plan details: bedrooms, bathrooms, area, land size compatibility
-- Price display in KES
-- Architect/engineer info with verification badge
-- "Purchase Plan" and "Save to Favorites" actions
-- Related plans section
+## Technical Details
 
-### Purchase Flow
-- Plan selection → Payment (M-Pesa integration via edge function) → Digital unlock
-- Payment confirmation triggers access to full PDF/files
-- Purchase history in client dashboard
+**Conversation grouping query pattern:**
+```sql
+-- Get all messages involving the user, then group by the other party in JS
+SELECT * FROM messages 
+WHERE sender_id = :userId OR receiver_id = :userId
+ORDER BY created_at DESC
+```
 
----
+**Realtime subscription:**
+```typescript
+supabase.channel('user-messages')
+  .on('postgres_changes', {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'messages',
+    filter: `receiver_id=eq.${user.id}`
+  }, (payload) => { /* append new message */ })
+  .subscribe()
+```
 
-## Phase 3: Professional Profiles & Verification
+**No schema changes needed** except enabling realtime publication. The `messages` table and RLS policies already exist and are correctly configured.
 
-### Professional Onboarding
-- Portfolio upload (images, PDFs)
-- License/certification document upload
-- Specialization selection (residential, commercial, structural, etc.)
-- Service area (Kenyan counties)
-- Pricing information
-
-### Verification Workflow
-- Document upload → Pending review status
-- Admin approves/rejects (handled in admin panel)
-- Verified badge displayed on profile
-- Only verified professionals can list plans or receive project requests
-
-### Professional Dashboard
-- Uploaded plans with status (pending/approved/rejected)
-- Incoming project requests
-- Earnings overview (sales, commission deducted, withdrawals)
-- Messages from clients
-- Profile analytics (views, inquiries)
-
----
-
-## Phase 4: Client Dashboard & Features
-
-### Client Dashboard
-- Active projects overview
-- Purchased plans with download access
-- Saved/favorite plans
-- Payment history
-- Messages with professionals
-
-### Hire a Professional
-- Browse verified professionals by specialization and location
-- View portfolio and reviews
-- Send project request with details (land size, budget, requirements)
-- In-app messaging
-
-### Reviews & Ratings
-- Clients can rate and review professionals after project completion
-- Star rating + written review
-- Display on professional profiles
-
----
-
-## Phase 5: Cost Calculator
-
-### Dynamic Estimation Tool
-- Input: land size (50x100, 1/8 acre, etc.), house type, material category
-- Region multiplier by Kenyan county
-- Detailed cost breakdown:
-  - Foundation
-  - Structure/Walling
-  - Roofing
-  - Finishing (plumbing, electrical, painting)
-  - Labor
-  - Professional fees
-- Save estimate to dashboard
-- Option to "Find professionals for this project"
-
----
-
-## Phase 6: Messaging System
-
-### In-App Chat
-- Real-time messaging between clients and professionals
-- Message threads per project/inquiry
-- Notification indicators
-- Message history in dashboard
-
----
-
-## Mobile-First Design
-
-- Bottom navigation bar (Home, Browse, Calculator, Projects, Profile)
-- Card-based layouts throughout
-- Sticky action buttons on detail pages
-- Smooth page transitions
-- Trust elements: verification badges, review stars, secure payment icons
-- Clean typography with professional color palette (neutral tones with accent color)
-
----
-
-## Admin Panel (Separate Project)
-
-> Will be built as a separate Lovable project sharing the same Supabase backend
-
-- Professional verification approval/rejection
-- House plan moderation
-- User management
-- Commission settings
-- Analytics dashboard (revenue, users, sales, top professionals)
-- Activity logs and fraud flags
-
----
-
-## Security Measures
-- Row-Level Security on all tables
-- Watermarked plan previews; full files in private storage buckets
-- Verification document storage in private buckets
-- Rate limiting on auth endpoints
-- Role-based route protection
-- Secure payment processing via edge functions
-
----
-
-## Payment Integration (M-Pesa)
-- Edge function to handle M-Pesa STK Push via a provider like IntaSend or Safaricom Daraja API
-- Payment confirmation webhook
-- Commission deduction logic
-- Transaction records with status tracking
-- *Note: You'll need to set up an M-Pesa business account/payment provider — we'll guide you through this when we implement payments*
+## Files to Create/Edit
+- **Create**: `src/pages/Messages.tsx` (conversation list)
+- **Create**: `src/pages/Conversation.tsx` (individual chat)
+- **Edit**: `src/App.tsx` (add routes)
+- **Edit**: `src/components/MobileNav.tsx` (add Messages nav item)
+- **Edit**: `src/pages/ProfessionalDashboard.tsx` (add Message button on requests)
+- **Edit**: `src/pages/Dashboard.tsx` (add Message button on project requests)
+- **Database**: Enable realtime on messages table
 
