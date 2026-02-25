@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, MessageSquare, Loader2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ interface Thread {
 export default function Messages() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,14 +33,30 @@ export default function Messages() {
     if (user) fetchThreads();
   }, [user]);
 
-  // Realtime: refresh threads on new messages
+  // Realtime + polling fallback: keep threads fresh for both incoming and outgoing messages
   useEffect(() => {
     if (!user) return;
+
+    const refresh = () => fetchThreads();
     const channel = supabase
-      .channel("threads-refresh")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `receiver_id=eq.${user.id}` }, () => fetchThreads())
+      .channel(`threads-refresh-${user.id}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (payload) => {
+        const msg = payload.new as { sender_id: string; receiver_id: string };
+        if (msg.sender_id === user.id || msg.receiver_id === user.id) refresh();
+      })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+
+    const interval = window.setInterval(refresh, 5000);
+    const onVisibility = () => {
+      if (!document.hidden) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchThreads = async () => {
@@ -108,7 +125,7 @@ export default function Messages() {
           ) : (
             <div className="space-y-2">
               {threads.map((t) => (
-                <Card key={t.userId} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/messages/${t.userId}`)}>
+                <Card key={t.userId} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate(`/messages/${t.userId}`, { state: { from: location.pathname } })}>
                   <CardContent className="flex items-center gap-3 p-4">
                     <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={t.avatarUrl || undefined} />

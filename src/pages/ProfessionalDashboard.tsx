@@ -434,7 +434,7 @@ export default function ProfessionalDashboard() {
                             )}
                             {(req as any).client_id && (
                               <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
-                                <Link to={`/messages/${(req as any).client_id}`}>💬 Message</Link>
+                                <Link to={`/messages/${(req as any).client_id}`} state={{ from: "/professional-dashboard" }}>💬 Message</Link>
                               </Button>
                             )}
                           </div>
