@@ -18,6 +18,8 @@ import ProfessionalDashboard from "./pages/ProfessionalDashboard";
 import ReviewPage from "./pages/ReviewPage";
 import Profile from "./pages/Profile";
 import UploadPlan from "./pages/UploadPlan";
+import Messages from "./pages/Messages";
+import Conversation from "./pages/Conversation";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminPlans from "./pages/admin/AdminPlans";
@@ -49,6 +51,8 @@ const App = () => (
               <Route path="/professional/:userId" element={<ProfessionalPublicProfile />} />
               <Route path="/professional-dashboard" element={<ProfessionalDashboard />} />
               <Route path="/reviews" element={<ReviewPage />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/messages/:userId" element={<Conversation />} />
               <Route path="/profile" element={<Profile />} />
               {/* Admin Panel - obscured route */}
               <Route path="/ctrl-panel-lmx" element={<AdminLayout />}>
