@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .select("role")
       .eq("user_id", userId)
       .limit(1)
-      .single();
+      .maybeSingle();
     return (data?.role as UserRole) ?? null;
   };
 

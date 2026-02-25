@@ -58,7 +58,7 @@ export default function AuthPage() {
       toast({ title: "Welcome back!", description: "You've been logged in successfully." });
       // Role-based redirect will happen via Dashboard/ProfessionalDashboard useEffect
       // Fetch role to redirect immediately
-      const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user!.id).single();
+      const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user!.id).maybeSingle();
       if (roleData?.role === "professional") {
         navigate("/professional-dashboard");
       } else if (roleData?.role === "admin") {
@@ -85,7 +85,7 @@ export default function AuthPage() {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: signupEmail,
         password: signupPassword,
         options: {
@@ -93,29 +93,12 @@ export default function AuthPage() {
           data: {
             full_name: signupName,
             phone: signupPhone,
+            role: signupRole,
+            categories: signupRole === "professional" ? signupCategories : undefined,
           },
         },
       });
       if (error) throw error;
-
-      if (data.user) {
-        const { error: roleError } = await supabase.from("user_roles").insert({
-          user_id: data.user.id,
-          role: signupRole as any,
-        });
-        if (roleError) console.error("Role assignment error:", roleError);
-
-        if (signupRole === "professional") {
-          await supabase.from("professional_profiles").insert({
-            user_id: data.user.id,
-            specializations: signupCategories as any,
-          });
-        }
-
-        if (signupPhone) {
-          await supabase.from("profiles").update({ phone: signupPhone }).eq("user_id", data.user.id);
-        }
-      }
 
       toast({
         title: "Account created!",
