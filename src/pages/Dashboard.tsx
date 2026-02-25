@@ -221,7 +221,7 @@ export default function Dashboard() {
                           <Badge className={`${getStatusColor(req.status)} capitalize`}>{req.status}</Badge>
                           {(req as any).professional_id && (
                             <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                              <Link to={`/messages/${(req as any).professional_id}`}><Mail className="mr-1 h-3 w-3" /> Message</Link>
+                              <Link to={`/messages/${(req as any).professional_id}`} state={{ from: "/dashboard" }}><Mail className="mr-1 h-3 w-3" /> Message</Link>
                             </Button>
                           )}
                         </div>

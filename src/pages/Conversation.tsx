@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,9 @@ interface OtherUser {
 
 export default function Conversation() {
   const { userId } = useParams<{ userId: string }>();
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [otherUser, setOtherUser] = useState<OtherUser>({ name: "...", avatarUrl: null });
   const [newMsg, setNewMsg] = useState("");
@@ -32,15 +33,32 @@ export default function Conversation() {
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const backRoute =
+    (location.state as { from?: string } | null)?.from ||
+    (role === "professional" ? "/professional-dashboard" : role === "client" ? "/dashboard" : "/messages");
+
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user && userId && user.id === userId) {
+      navigate("/messages", { replace: true });
+    }
+  }, [user, userId, navigate]);
 
   useEffect(() => {
     if (user && userId) {
       fetchMessages();
       fetchOtherUser();
     }
+  }, [user, userId]);
+
+  // Poll fallback so messages still appear if realtime is delayed
+  useEffect(() => {
+    if (!user || !userId) return;
+    const interval = window.setInterval(fetchMessages, 4000);
+    return () => window.clearInterval(interval);
   }, [user, userId]);
 
   // Realtime
@@ -54,7 +72,7 @@ export default function Conversation() {
         const msg = payload.new as Message;
         if ((msg.sender_id === userId && msg.receiver_id === user.id) ||
             (msg.sender_id === user.id && msg.receiver_id === userId)) {
-          setMessages(prev => [...prev, msg]);
+          setMessages((prev) => (prev.some((existing) => existing.id === msg.id) ? prev : [...prev, msg]));
           // Mark as read if we're the receiver
           if (msg.receiver_id === user.id) {
             supabase.from("messages").update({ is_read: true }).eq("id", msg.id).then();
@@ -100,12 +118,22 @@ export default function Conversation() {
     e.preventDefault();
     if (!newMsg.trim() || !user || !userId) return;
     setSending(true);
-    const { error } = await supabase.from("messages").insert({
-      sender_id: user.id,
-      receiver_id: userId,
-      content: newMsg.trim(),
-    });
-    if (!error) setNewMsg("");
+    const { data: inserted, error } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: user.id,
+        receiver_id: userId,
+        content: newMsg.trim(),
+      })
+      .select("*")
+      .single();
+
+    if (!error) {
+      setNewMsg("");
+      if (inserted) {
+        setMessages((prev) => (prev.some((existing) => existing.id === inserted.id) ? prev : [...prev, inserted as Message]));
+      }
+    }
     setSending(false);
   };
 
@@ -121,13 +149,7 @@ export default function Conversation() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              if (window.history.length > 1) {
-                navigate(-1);
-              } else {
-                navigate("/messages");
-              }
-            }}
+            onClick={() => navigate(backRoute, { replace: true })}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
