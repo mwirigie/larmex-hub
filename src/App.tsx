@@ -7,6 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import MobileNav from "@/components/MobileNav";
 import Index from "./pages/Index";
 import AuthPage from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import BrowsePlans from "./pages/BrowsePlans";
 import PlanDetail from "./pages/PlanDetail";
 import Dashboard from "./pages/Dashboard";
@@ -41,6 +43,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/browse" element={<BrowsePlans />} />
               <Route path="/plans/:id" element={<PlanDetail />} />
               <Route path="/plans/new" element={<UploadPlan />} />
