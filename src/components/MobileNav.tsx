@@ -1,11 +1,11 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Search, Calculator, FolderOpen, User } from "lucide-react";
+import { Home, Search, MessageSquare, FolderOpen, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { label: "Home", icon: Home, path: "/" },
   { label: "Browse", icon: Search, path: "/browse" },
-  { label: "Calculator", icon: Calculator, path: "/calculator" },
+  { label: "Messages", icon: MessageSquare, path: "/messages" },
   { label: "Projects", icon: FolderOpen, path: "/dashboard" },
   { label: "Profile", icon: User, path: "/profile" },
 ];
@@ -16,7 +16,7 @@ export default function MobileNav() {
   const { user } = useAuth();
 
   const handleNav = (path: string) => {
-    if ((path === "/dashboard" || path === "/profile") && !user) {
+    if ((path === "/dashboard" || path === "/profile" || path === "/messages") && !user) {
       navigate("/auth");
     } else {
       navigate(path);

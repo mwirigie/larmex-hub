@@ -421,10 +421,15 @@ export default function ProfessionalDashboard() {
                                 </Button>
                               </div>
                             )}
-                            {req.status === "accepted" && (
+                             {req.status === "accepted" && (
                               <Button size="sm" variant="outline" className="h-7 text-xs"
                                 onClick={() => handleRequestAction(req.id, "completed")} disabled={updatingRequest === req.id}>
                                 Mark Complete
+                              </Button>
+                            )}
+                            {(req as any).client_id && (
+                              <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
+                                <Link to={`/messages/${(req as any).client_id}`}>💬 Message</Link>
                               </Button>
                             )}
                           </div>

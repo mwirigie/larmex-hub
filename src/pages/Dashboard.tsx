@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import {
   Building2, FolderOpen, Heart, CreditCard, MessageSquare,
   LogOut, Loader2, FileText, BarChart3, Shield, Eye,
-  ArrowRight, BedDouble
+  ArrowRight, BedDouble, Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -216,7 +216,14 @@ export default function Dashboard() {
                             <span>{new Date(req.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
-                        <Badge className={`${getStatusColor(req.status)} capitalize shrink-0`}>{req.status}</Badge>
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <Badge className={`${getStatusColor(req.status)} capitalize`}>{req.status}</Badge>
+                          {(req as any).professional_id && (
+                            <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                              <Link to={`/messages/${(req as any).professional_id}`}><Mail className="mr-1 h-3 w-3" /> Message</Link>
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
