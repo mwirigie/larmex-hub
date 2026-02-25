@@ -19,10 +19,11 @@ interface Thread {
 }
 
 export default function Messages() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [threads, setThreads] = useState<Thread[]>([]);
+  const exitRoute = role === "professional" ? "/professional-dashboard" : role === "client" ? "/dashboard" : role === "admin" ? "/ctrl-panel-lmx" : "/";
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -107,7 +108,7 @@ export default function Messages() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card">
         <div className="container flex h-14 items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => navigate(exitRoute, { replace: true })}><ArrowLeft className="h-5 w-5" /></Button>
           <h1 className="font-display text-lg font-bold text-foreground">Messages</h1>
         </div>
       </header>
