@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Building2, Mail, ArrowLeft } from "lucide-react";
@@ -9,22 +9,38 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+const RESET_REDIRECT_URL = "https://larmex-hub.lovable.app/reset-password";
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export default function ForgotPassword() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || cooldown > 0) return;
+
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: RESET_REDIRECT_URL,
       });
       if (error) throw error;
+
       setSent(true);
-      toast({ title: "Reset link sent", description: "Check your email for a password reset link." });
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      toast({ title: "Reset link sent", description: "Check your email for your latest password reset link." });
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
@@ -54,7 +70,7 @@ export default function ForgotPassword() {
             <CardTitle>Reset Password</CardTitle>
             <CardDescription>
               {sent
-                ? "We've sent a password reset link to your email."
+                ? "We’ve sent a password reset link to your email."
                 : "Enter the email address you used to create your account."}
             </CardDescription>
           </CardHeader>
@@ -62,10 +78,15 @@ export default function ForgotPassword() {
             {sent ? (
               <div className="space-y-4 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Didn't receive it? Check your spam folder or try again.
+                  Use the most recent reset email only. Older reset links become invalid after a new request.
                 </p>
-                <Button variant="outline" onClick={() => setSent(false)} className="w-full">
-                  Try again
+                <Button
+                  variant="outline"
+                  onClick={() => setSent(false)}
+                  className="w-full"
+                  disabled={cooldown > 0}
+                >
+                  {cooldown > 0 ? `Try again in ${cooldown}s` : "Try again"}
                 </Button>
                 <Link to="/auth">
                   <Button variant="link" className="w-full gap-1">
@@ -90,8 +111,8 @@ export default function ForgotPassword() {
                     />
                   </div>
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sending..." : "Send Reset Link"}
+                <Button type="submit" className="w-full" disabled={loading || cooldown > 0}>
+                  {loading ? "Sending..." : cooldown > 0 ? `Resend in ${cooldown}s` : "Send Reset Link"}
                 </Button>
                 <Link to="/auth">
                   <Button variant="link" className="w-full gap-1">
