@@ -18,6 +18,8 @@ interface ProfRow {
   years_experience: number | null;
   specializations: string[] | null;
   service_counties: string[] | null;
+  starting_price: number | null;
+  bio: string | null;
   created_at: string;
   full_name?: string;
   email?: string;
@@ -39,7 +41,7 @@ export default function AdminProfessionals() {
     setLoading(true);
     let query = supabase
       .from("professional_profiles")
-      .select("id, user_id, company_name, is_verified, verification_status, license_number, years_experience, specializations, service_counties, created_at")
+      .select("id, user_id, company_name, is_verified, verification_status, license_number, years_experience, specializations, service_counties, starting_price, bio, created_at")
       .order("created_at", { ascending: false });
 
     if (filter === "pending" || filter === "approved" || filter === "rejected") {
@@ -145,6 +147,7 @@ export default function AdminProfessionals() {
                       {prof.company_name && <span>🏢 {prof.company_name}</span>}
                       {prof.license_number && <span>📋 {prof.license_number}</span>}
                       {prof.years_experience != null && <span>{prof.years_experience} yrs exp</span>}
+                      {prof.starting_price != null && <span>💰 KES {prof.starting_price.toLocaleString()}</span>}
                     </div>
                     {prof.specializations && prof.specializations.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">

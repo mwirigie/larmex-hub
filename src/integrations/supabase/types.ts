@@ -182,15 +182,18 @@ export type Database = {
       }
       professional_profiles: {
         Row: {
+          bio: string | null
           company_name: string | null
           created_at: string
           id: string
           is_verified: boolean
           license_number: string | null
+          portfolio: Json | null
           service_counties: string[] | null
           specializations:
             | Database["public"]["Enums"]["specialization"][]
             | null
+          starting_price: number | null
           updated_at: string
           user_id: string
           verification_status: Database["public"]["Enums"]["verification_status"]
@@ -198,15 +201,18 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          bio?: string | null
           company_name?: string | null
           created_at?: string
           id?: string
           is_verified?: boolean
           license_number?: string | null
+          portfolio?: Json | null
           service_counties?: string[] | null
           specializations?:
             | Database["public"]["Enums"]["specialization"][]
             | null
+          starting_price?: number | null
           updated_at?: string
           user_id: string
           verification_status?: Database["public"]["Enums"]["verification_status"]
@@ -214,15 +220,18 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          bio?: string | null
           company_name?: string | null
           created_at?: string
           id?: string
           is_verified?: boolean
           license_number?: string | null
+          portfolio?: Json | null
           service_counties?: string[] | null
           specializations?:
             | Database["public"]["Enums"]["specialization"][]
             | null
+          starting_price?: number | null
           updated_at?: string
           user_id?: string
           verification_status?: Database["public"]["Enums"]["verification_status"]
@@ -281,6 +290,7 @@ export type Database = {
           land_size: string | null
           professional_id: string | null
           status: string
+          timeline: string | null
           title: string
           updated_at: string
         }
@@ -294,6 +304,7 @@ export type Database = {
           land_size?: string | null
           professional_id?: string | null
           status?: string
+          timeline?: string | null
           title: string
           updated_at?: string
         }
@@ -307,6 +318,7 @@ export type Database = {
           land_size?: string | null
           professional_id?: string | null
           status?: string
+          timeline?: string | null
           title?: string
           updated_at?: string
         }
@@ -475,6 +487,10 @@ export type Database = {
         | "interior"
         | "landscape"
         | "urban_planning"
+        | "architect"
+        | "structural_engineer"
+        | "quantity_surveyor"
+        | "site_supervisor"
       verification_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
@@ -621,6 +637,10 @@ export const Constants = {
         "interior",
         "landscape",
         "urban_planning",
+        "architect",
+        "structural_engineer",
+        "quantity_surveyor",
+        "site_supervisor",
       ],
       verification_status: ["pending", "approved", "rejected"],
     },

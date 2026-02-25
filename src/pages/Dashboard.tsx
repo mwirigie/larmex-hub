@@ -66,8 +66,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
-    // If admin, redirect to admin panel
     if (!loading && user && role === "admin") navigate("/ctrl-panel-lmx");
+    if (!loading && user && role === "professional") navigate("/professional-dashboard");
   }, [user, role, loading, navigate]);
 
   useEffect(() => {
@@ -177,8 +177,8 @@ export default function Dashboard() {
                 </Button>
               ) : (
                 <>
-                  <Button asChild><Link to="/browse">Browse Plans</Link></Button>
-                  <Button variant="outline" asChild><Link to="/calculator">Cost Calculator</Link></Button>
+                  <Button asChild><Link to="/hire">Hire Professional</Link></Button>
+                  <Button variant="outline" asChild><Link to="/browse">Browse Plans</Link></Button>
                 </>
               )}
             </div>
@@ -202,6 +202,31 @@ export default function Dashboard() {
               </>
             )}
           </div>
+
+          {/* Hire by Category - Client only */}
+          {!isProf && (
+            <div className="mb-6">
+              <h2 className="font-display text-lg font-semibold text-foreground mb-3">Hire a Professional</h2>
+              <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                <Link to="/hire?category=architect" className="rounded-xl border border-border bg-card p-4 text-center hover:shadow-md hover:border-primary/30 transition-all">
+                  <Building2 className="mx-auto h-8 w-8 text-primary mb-2" />
+                  <p className="font-semibold text-foreground text-sm">Architect</p>
+                </Link>
+                <Link to="/hire?category=structural_engineer" className="rounded-xl border border-border bg-card p-4 text-center hover:shadow-md hover:border-primary/30 transition-all">
+                  <Shield className="mx-auto h-8 w-8 text-primary mb-2" />
+                  <p className="font-semibold text-foreground text-sm">Structural Engineer</p>
+                </Link>
+                <Link to="/hire?category=quantity_surveyor" className="rounded-xl border border-border bg-card p-4 text-center hover:shadow-md hover:border-primary/30 transition-all">
+                  <BarChart3 className="mx-auto h-8 w-8 text-primary mb-2" />
+                  <p className="font-semibold text-foreground text-sm">Quantity Surveyor</p>
+                </Link>
+                <Link to="/hire?category=site_supervisor" className="rounded-xl border border-border bg-card p-4 text-center hover:shadow-md hover:border-primary/30 transition-all">
+                  <Eye className="mx-auto h-8 w-8 text-primary mb-2" />
+                  <p className="font-semibold text-foreground text-sm">Site Supervisor</p>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Tabs */}
           <Tabs defaultValue={isProf ? "plans" : "projects"}>

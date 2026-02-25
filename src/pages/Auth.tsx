@@ -8,8 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+
+const PROFESSIONAL_CATEGORIES = [
+  { value: "architect", label: "Architect" },
+  { value: "structural_engineer", label: "Structural Engineer" },
+  { value: "quantity_surveyor", label: "Quantity Surveyor" },
+  { value: "site_supervisor", label: "Site Supervisor" },
+];
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
@@ -30,6 +38,13 @@ export default function AuthPage() {
   const [signupPhone, setSignupPhone] = useState("");
   const [signupPassword, setSignupPassword] = useState("");
   const [signupRole, setSignupRole] = useState<string>("");
+  const [signupCategories, setSignupCategories] = useState<string[]>([]);
+
+  const toggleCategory = (cat: string) => {
+    setSignupCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +70,10 @@ export default function AuthPage() {
       toast({ title: "Select a role", description: "Please choose whether you're a client or professional.", variant: "destructive" });
       return;
     }
+    if (signupRole === "professional" && signupCategories.length === 0) {
+      toast({ title: "Select categories", description: "Please select at least one professional category.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -70,7 +89,6 @@ export default function AuthPage() {
       });
       if (error) throw error;
 
-      // Assign role
       if (data.user) {
         const { error: roleError } = await supabase.from("user_roles").insert({
           user_id: data.user.id,
@@ -78,14 +96,13 @@ export default function AuthPage() {
         });
         if (roleError) console.error("Role assignment error:", roleError);
 
-        // If professional, create professional profile
         if (signupRole === "professional") {
           await supabase.from("professional_profiles").insert({
             user_id: data.user.id,
+            specializations: signupCategories as any,
           });
         }
 
-        // Update profile with phone
         if (signupPhone) {
           await supabase.from("profiles").update({ phone: signupPhone }).eq("user_id", data.user.id);
         }
@@ -136,35 +153,15 @@ export default function AuthPage() {
                     <Label htmlFor="login-email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="you@example.com"
-                        className="pl-10"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        required
-                      />
+                      <Input id="login-email" type="email" placeholder="you@example.com" className="pl-10" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="login-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <Input id="login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" className="pl-10 pr-10" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
@@ -183,63 +180,29 @@ export default function AuthPage() {
                     <Label htmlFor="signup-name">Full Name</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="signup-name"
-                        placeholder="John Doe"
-                        className="pl-10"
-                        value={signupName}
-                        onChange={(e) => setSignupName(e.target.value)}
-                        required
-                      />
+                      <Input id="signup-name" placeholder="John Doe" className="pl-10" value={signupName} onChange={(e) => setSignupName(e.target.value)} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="you@example.com"
-                        className="pl-10"
-                        value={signupEmail}
-                        onChange={(e) => setSignupEmail(e.target.value)}
-                        required
-                      />
+                      <Input id="signup-email" type="email" placeholder="you@example.com" className="pl-10" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} required />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-phone">Phone (optional)</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="signup-phone"
-                        placeholder="+254 7XX XXX XXX"
-                        className="pl-10"
-                        value={signupPhone}
-                        onChange={(e) => setSignupPhone(e.target.value)}
-                      />
+                      <Input id="signup-phone" placeholder="+254 7XX XXX XXX" className="pl-10" value={signupPhone} onChange={(e) => setSignupPhone(e.target.value)} />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="signup-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Min. 6 characters"
-                        className="pl-10 pr-10"
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
-                        required
-                        minLength={6}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <Input id="signup-password" type={showPassword ? "text" : "password"} placeholder="Min. 6 characters" className="pl-10 pr-10" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} required minLength={6} />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
@@ -247,15 +210,28 @@ export default function AuthPage() {
                   <div className="space-y-2">
                     <Label>I am a...</Label>
                     <Select value={signupRole} onValueChange={setSignupRole}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Select your role" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="client">Client — I want to build a home</SelectItem>
                         <SelectItem value="professional">Professional — Architect / Engineer</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {signupRole === "professional" && (
+                    <div className="space-y-2">
+                      <Label>Professional Categories *</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {PROFESSIONAL_CATEGORIES.map((cat) => (
+                          <label key={cat.value} className="flex items-center gap-2 rounded-lg border border-border p-2.5 cursor-pointer hover:bg-muted transition-colors text-sm">
+                            <Checkbox checked={signupCategories.includes(cat.value)} onCheckedChange={() => toggleCategory(cat.value)} />
+                            {cat.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Creating account..." : "Create Account"}
                   </Button>
