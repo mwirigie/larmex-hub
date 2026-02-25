@@ -4,14 +4,18 @@ import { motion } from "framer-motion";
 import {
   Building2, FolderOpen, Heart, CreditCard, MessageSquare,
   LogOut, Loader2, FileText, BarChart3, Shield, Eye,
-  ArrowRight, BedDouble, Mail, Star
+  ArrowRight, BedDouble, Mail, Star, CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import planPlaceholder from "@/assets/plan-placeholder.jpg";
 
 interface DashboardStats {
@@ -42,10 +46,18 @@ interface RecentRequest {
 export default function Dashboard() {
   const { user, role, loading, signOut } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats>({ projects: 0, favorites: 0, purchases: 0, messages: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentPurchases, setRecentPurchases] = useState<RecentPurchase[]>([]);
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
+
+  // Complete & Review dialog
+  const [completeDialog, setCompleteDialog] = useState(false);
+  const [selectedReq, setSelectedReq] = useState<RecentRequest | null>(null);
+  const [rating, setRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
@@ -93,6 +105,52 @@ export default function Dashboard() {
     }
 
     setStatsLoading(false);
+  };
+
+  const handleMarkComplete = (req: RecentRequest) => {
+    setSelectedReq(req);
+    setRating(5);
+    setReviewComment("");
+    setCompleteDialog(true);
+  };
+
+  const handleSubmitCompleteAndReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedReq) return;
+    setSubmitting(true);
+
+    const { error: updateErr } = await supabase
+      .from("project_requests")
+      .update({ status: "completed" })
+      .eq("id", selectedReq.id);
+
+    if (updateErr) {
+      toast({ title: "Error", description: updateErr.message, variant: "destructive" });
+      setSubmitting(false);
+      return;
+    }
+
+    const profId = (selectedReq as any).professional_id;
+    if (profId) {
+      const { error: reviewErr } = await supabase.from("reviews").insert({
+        reviewer_id: user.id,
+        professional_id: profId,
+        plan_id: selectedReq.id,
+        rating,
+        comment: reviewComment || null,
+      });
+      if (reviewErr) {
+        toast({ title: "Project completed", description: "Review failed: " + reviewErr.message, variant: "destructive" });
+      } else {
+        toast({ title: "Project completed & reviewed!", description: "Thank you for your feedback." });
+      }
+    } else {
+      toast({ title: "Project marked complete!" });
+    }
+
+    setCompleteDialog(false);
+    fetchDashboardData();
+    setSubmitting(false);
   };
 
   if (loading) {
@@ -220,7 +278,12 @@ export default function Dashboard() {
                         </div>
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <Badge className={`${getStatusColor(req.status)} capitalize`}>{req.status}</Badge>
-                          <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            {req.status === "accepted" && (req as any).professional_id && (
+                              <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => handleMarkComplete(req)}>
+                                <CheckCircle2 className="mr-1 h-3 w-3" /> Mark Complete
+                              </Button>
+                            )}
                             {req.status === "completed" && (req as any).professional_id && (
                               <Button variant="default" size="sm" className="h-7 text-xs" asChild>
                                 <Link to="/reviews"><Star className="mr-1 h-3 w-3" /> Review</Link>
@@ -282,6 +345,37 @@ export default function Dashboard() {
           </Tabs>
         </motion.div>
       </main>
+
+      {/* Complete & Review Dialog */}
+      <Dialog open={completeDialog} onOpenChange={setCompleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Project & Leave Review</DialogTitle>
+            <DialogDescription>
+              Mark "{selectedReq?.title}" as complete and rate the professional.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitCompleteAndReview} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Rating</Label>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button key={s} type="button" onClick={() => setRating(s)}>
+                    <Star className={`h-8 w-8 transition-colors ${s <= rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Comment (optional)</Label>
+              <Textarea value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} placeholder="Share your experience..." rows={3} />
+            </div>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? "Submitting..." : "Complete & Submit Review"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
