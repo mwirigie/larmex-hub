@@ -242,7 +242,12 @@ export default function ProfessionalDashboard() {
 
       <main className="container max-w-4xl py-6">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <h1 className="font-display text-2xl font-bold text-foreground mb-6">Professional Dashboard</h1>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="font-display text-2xl font-bold text-foreground">Professional Dashboard</h1>
+            <Button asChild>
+              <Link to="/messages"><MessageSquare className="mr-2 h-4 w-4" /> Messages</Link>
+            </Button>
+          </div>
 
           <Tabs defaultValue="profile" className="space-y-4">
             <TabsList>

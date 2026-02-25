@@ -144,7 +144,8 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">Track your projects and saved plans.</p>
             </div>
             <div className="flex gap-3">
-              <Button asChild><Link to="/hire">Hire Professional</Link></Button>
+              <Button asChild><Link to="/messages"><MessageSquare className="mr-2 h-4 w-4" /> Messages</Link></Button>
+              <Button asChild variant="secondary"><Link to="/hire">Hire Professional</Link></Button>
               <Button variant="outline" asChild><Link to="/browse">Browse Plans</Link></Button>
             </div>
           </div>
