@@ -12,6 +12,10 @@ import PlanDetail from "./pages/PlanDetail";
 import Dashboard from "./pages/Dashboard";
 import Calculator from "./pages/Calculator";
 import Professionals from "./pages/Professionals";
+import HireProfessional from "./pages/HireProfessional";
+import ProfessionalPublicProfile from "./pages/ProfessionalPublicProfile";
+import ProfessionalDashboard from "./pages/ProfessionalDashboard";
+import ReviewPage from "./pages/ReviewPage";
 import Profile from "./pages/Profile";
 import UploadPlan from "./pages/UploadPlan";
 import AdminLayout from "./pages/admin/AdminLayout";
@@ -41,6 +45,10 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/calculator" element={<Calculator />} />
               <Route path="/professionals" element={<Professionals />} />
+              <Route path="/hire" element={<HireProfessional />} />
+              <Route path="/professional/:userId" element={<ProfessionalPublicProfile />} />
+              <Route path="/professional-dashboard" element={<ProfessionalDashboard />} />
+              <Route path="/reviews" element={<ReviewPage />} />
               <Route path="/profile" element={<Profile />} />
               {/* Admin Panel - obscured route */}
               <Route path="/ctrl-panel-lmx" element={<AdminLayout />}>

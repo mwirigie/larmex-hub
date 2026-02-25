@@ -15,6 +15,7 @@ interface Professional {
   years_experience: number | null;
   service_counties: string[] | null;
   is_verified: boolean;
+  starting_price: number | null;
   profile?: {
     full_name: string;
     avatar_url: string | null;
@@ -42,7 +43,7 @@ export default function Professionals() {
     setLoading(true);
     const { data: profs } = await supabase
       .from("professional_profiles")
-      .select("id, user_id, company_name, specializations, years_experience, service_counties, is_verified")
+      .select("id, user_id, company_name, specializations, years_experience, service_counties, is_verified, starting_price")
       .eq("is_verified", true);
 
     if (profs && profs.length > 0) {
@@ -138,9 +139,9 @@ export default function Professionals() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="truncate font-display font-semibold text-foreground">
+                      <Link to={`/professional/${pro.user_id}`} className="truncate font-display font-semibold text-foreground hover:text-primary transition-colors">
                         {pro.profile?.full_name || "Professional"}
-                      </h3>
+                      </Link>
                       <BadgeCheck className="h-4 w-4 shrink-0 text-primary" />
                     </div>
                     {pro.company_name && (
@@ -173,6 +174,17 @@ export default function Professionals() {
                     ))}
                   </div>
                 )}
+                {pro.starting_price && (
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    From <span className="font-semibold text-foreground">KES {pro.starting_price.toLocaleString()}</span>
+                  </p>
+                )}
+
+                <div className="mt-3">
+                  <Button size="sm" className="w-full" asChild>
+                    <Link to={`/professional/${pro.user_id}`}>View Profile</Link>
+                  </Button>
+                </div>
               </motion.div>
             ))}
           </div>
