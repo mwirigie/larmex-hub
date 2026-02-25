@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Check, X, Eye, Search } from "lucide-react";
+import { Loader2, Check, X, Eye, Search, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,9 @@ interface PlanRow {
   created_at: string;
   professional_id: string;
   view_count: number;
+  download_count: number;
+  plan_code: string | null;
+  is_featured: boolean;
 }
 
 export default function AdminPlans() {
@@ -40,7 +43,7 @@ export default function AdminPlans() {
     setLoading(true);
     let query = supabase
       .from("house_plans")
-      .select("id, title, house_type, bedrooms, bathrooms, price_kes, status, thumbnail_url, county, created_at, professional_id, view_count")
+      .select("id, title, house_type, bedrooms, bathrooms, price_kes, status, thumbnail_url, county, created_at, professional_id, view_count, download_count, plan_code, is_featured")
       .order("created_at", { ascending: false });
 
     if (filter === "pending" || filter === "approved" || filter === "rejected" || filter === "draft") {
@@ -77,6 +80,17 @@ export default function AdminPlans() {
     setUpdating(null);
   };
 
+  const toggleFeatured = async (planId: string, current: boolean) => {
+    setUpdating(planId);
+    const { error } = await supabase.from("house_plans").update({ is_featured: !current } as any).eq("id", planId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: !current ? "Plan featured" : "Plan unfeatured" });
+      setPlans(prev => prev.map(p => p.id === planId ? { ...p, is_featured: !current } : p));
+    }
+    setUpdating(null);
+  };
   const filtered = plans.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
 
   const statusColor = (s: string) => {
@@ -122,6 +136,7 @@ export default function AdminPlans() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-foreground truncate">{plan.title}</h3>
                   <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-muted-foreground">
+                    {plan.plan_code && <span className="font-mono">{plan.plan_code}</span>}
                     <span className="capitalize">{plan.house_type}</span>
                     <span>·</span>
                     <span>{plan.bedrooms}BR / {plan.bathrooms}BA</span>
@@ -129,11 +144,12 @@ export default function AdminPlans() {
                     <span>KES {plan.price_kes.toLocaleString()}</span>
                     {plan.county && <><span>·</span><span>{plan.county}</span></>}
                     <span>·</span>
-                    <span>{plan.view_count} views</span>
+                    <span>{plan.view_count} views · {plan.download_count} downloads</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{new Date(plan.created_at).toLocaleDateString()}</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  {plan.is_featured && <Badge className="bg-amber-500/10 text-amber-600"><Star className="h-3 w-3 mr-1" />Featured</Badge>}
                   <Badge className={`${statusColor(plan.status)} capitalize`}>{plan.status}</Badge>
                   {plan.status === "pending" && (
                     <>
@@ -144,6 +160,12 @@ export default function AdminPlans() {
                         <X className="h-3.5 w-3.5 mr-1" /> Reject
                       </Button>
                     </>
+                  )}
+                  {plan.status === "approved" && (
+                    <Button size="sm" variant="outline" onClick={() => toggleFeatured(plan.id, plan.is_featured)} disabled={updating === plan.id}>
+                      <Star className={`h-3.5 w-3.5 mr-1 ${plan.is_featured ? "fill-amber-500 text-amber-500" : ""}`} />
+                      {plan.is_featured ? "Unfeature" : "Feature"}
+                    </Button>
                   )}
                   <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deletePlan(plan.id)} disabled={updating === plan.id}>
                     Delete
