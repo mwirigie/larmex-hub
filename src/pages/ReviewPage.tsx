@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Building2, Star, Loader2 } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -55,12 +54,12 @@ export default function ReviewPage() {
       return;
     }
 
-    // Check which have reviews
+    // Check which professionals the user has already reviewed
     const { data: existingReviews } = await supabase
       .from("reviews")
-      .select("plan_id")
+      .select("professional_id")
       .eq("reviewer_id", user.id);
-    const reviewedIds = new Set((existingReviews || []).map((r) => r.plan_id));
+    const reviewedProfessionalIds = new Set((existingReviews || []).map((r) => r.professional_id));
 
     // Get professional names
     const profIds = [...new Set(completedReqs.filter((r) => r.professional_id).map((r) => r.professional_id!))];
@@ -72,7 +71,7 @@ export default function ReviewPage() {
     setProjects(completedReqs.map((r) => ({
       ...r,
       professional_name: r.professional_id ? nameMap.get(r.professional_id) || "Professional" : "Unknown",
-      has_review: reviewedIds.has(r.id),
+      has_review: r.professional_id ? reviewedProfessionalIds.has(r.professional_id) : false,
     })));
     setLoading(false);
   };
@@ -85,7 +84,7 @@ export default function ReviewPage() {
     const { error } = await supabase.from("reviews").insert({
       reviewer_id: user.id,
       professional_id: selectedProject.professional_id,
-      plan_id: selectedProject.id,
+      plan_id: null,
       rating,
       comment: comment || null,
     });
