@@ -71,7 +71,7 @@ export default function ProfessionalPublicProfile() {
       supabase.from("professional_profiles").select("*").eq("user_id", userId).eq("is_verified", true).single(),
       supabase.from("profiles").select("full_name, avatar_url").eq("user_id", userId).single(),
       supabase.from("reviews").select("id, rating, comment, created_at, reviewer_id").eq("professional_id", userId).order("created_at", { ascending: false }),
-      supabase.from("project_requests").select("id", { count: "exact", head: true }).eq("professional_id", userId).eq("status", "completed"),
+      supabase.rpc("get_completed_project_count", { _professional_id: userId }),
     ]);
 
     if (!profRes.data) {
@@ -84,7 +84,7 @@ export default function ProfessionalPublicProfile() {
       portfolio: Array.isArray(profRes.data.portfolio) ? profRes.data.portfolio : [],
     });
     setProfileData(profileRes.data);
-    setCompletedCount(completedRes.count || 0);
+    setCompletedCount(completedRes.data || 0);
 
     // Process reviews
     const reviewData = reviewsRes.data || [];
