@@ -19,17 +19,27 @@ export default function ResetPassword() {
   const [validSession, setValidSession] = useState(false);
 
   useEffect(() => {
-    // Check if we have a recovery session from the email link
-    const hash = window.location.hash;
-    if (hash && hash.includes("type=recovery")) {
-      setValidSession(true);
-    }
-    // Also check via auth state
-    supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+    // Check if there's already a session (user arrived via recovery link)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setValidSession(true);
       }
     });
+
+    // Also listen for the PASSWORD_RECOVERY event
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+        setValidSession(true);
+      }
+    });
+
+    // Check URL hash as fallback
+    const hash = window.location.hash;
+    if (hash && (hash.includes("type=recovery") || hash.includes("access_token"))) {
+      setValidSession(true);
+    }
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
