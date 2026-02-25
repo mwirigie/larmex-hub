@@ -118,7 +118,19 @@ export default function Conversation() {
       {/* Header */}
       <header className="border-b border-border bg-card shrink-0">
         <div className="container flex h-14 items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate("/messages");
+              }
+            }}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <Avatar className="h-8 w-8">
             <AvatarImage src={otherUser.avatarUrl || undefined} />
             <AvatarFallback>{otherUser.name.charAt(0).toUpperCase()}</AvatarFallback>
