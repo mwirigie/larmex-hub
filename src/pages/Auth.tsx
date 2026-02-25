@@ -50,13 +50,22 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
         password: loginPassword,
       });
       if (error) throw error;
       toast({ title: "Welcome back!", description: "You've been logged in successfully." });
-      navigate("/dashboard");
+      // Role-based redirect will happen via Dashboard/ProfessionalDashboard useEffect
+      // Fetch role to redirect immediately
+      const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", data.user!.id).single();
+      if (roleData?.role === "professional") {
+        navigate("/professional-dashboard");
+      } else if (roleData?.role === "admin") {
+        navigate("/ctrl-panel-lmx");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error: any) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } finally {
