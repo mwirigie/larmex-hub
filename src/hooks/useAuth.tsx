@@ -24,14 +24,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const initializedRef = useRef(false);
 
-  const fetchRole = async (userId: string) => {
+  const inferFallbackRole = (u: User): UserRole => {
+    const metaRole = u.user_metadata?.role;
+    if (metaRole === "client" || metaRole === "professional" || metaRole === "admin") {
+      return metaRole;
+    }
+    return "client";
+  };
+
+  const fetchRole = async (u: User) => {
     const { data } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", userId)
+      .eq("user_id", u.id)
       .limit(1)
       .maybeSingle();
-    return (data?.role as UserRole) ?? null;
+
+    return (data?.role as UserRole) ?? inferFallbackRole(u);
   };
 
   useEffect(() => {
@@ -40,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = session?.user ?? null;
       setUser(u);
       if (u) {
-        const r = await fetchRole(u.id);
+        const r = await fetchRole(u);
         setRole(r);
       }
       setLoading(false);
@@ -55,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const u = session?.user ?? null;
       setUser(u);
       if (u) {
-        const r = await fetchRole(u.id);
+        const r = await fetchRole(u);
         setRole(r);
       } else {
         setRole(null);

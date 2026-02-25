@@ -279,9 +279,9 @@ export default function Dashboard() {
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <Badge className={`${getStatusColor(req.status)} capitalize`}>{req.status}</Badge>
                           <div className="flex flex-wrap gap-1 justify-end">
-                            {req.status === "accepted" && (req as any).professional_id && (
+                            {(req.status === "accepted" || req.status === "approved") && (req as any).professional_id && (
                               <Button variant="default" size="sm" className="h-7 text-xs" onClick={() => handleMarkComplete(req)}>
-                                <CheckCircle2 className="mr-1 h-3 w-3" /> Mark Complete
+                                <CheckCircle2 className="mr-1 h-3 w-3" /> Complete & Rate
                               </Button>
                             )}
                             {req.status === "completed" && (req as any).professional_id && (
