@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import PasswordStrengthIndicator, { validatePassword } from "@/components/PasswordStrengthIndicator";
 
-const PASSWORD_UPDATE_TIMEOUT_MS = 12000;
+const SESSION_TIMEOUT_MS = 8000;
+const UPDATE_TIMEOUT_MS = 12000;
 
 export default function ResetPassword() {
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export default function ResetPassword() {
         }
         return prev;
       });
-    }, 5000);
+    }, SESSION_TIMEOUT_MS);
 
     return () => {
       clearTimeout(timeout);
@@ -52,15 +54,19 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (loading) return;
+
+    if (!validatePassword(password)) {
+      toast({
+        title: "Password too weak",
+        description: "Please meet all the password requirements listed below.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (password !== confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    if (password.length < 6) {
-      toast({ title: "Password too short", description: "Minimum 6 characters.", variant: "destructive" });
       return;
     }
 
@@ -72,7 +78,7 @@ export default function ResetPassword() {
             data: { user: null },
             error: new Error("Password update timed out. Please request a fresh reset link."),
           });
-        }, PASSWORD_UPDATE_TIMEOUT_MS);
+        }, UPDATE_TIMEOUT_MS);
       });
 
       const { error } = await Promise.race([
@@ -93,13 +99,16 @@ export default function ResetPassword() {
         return;
       }
 
-      // Don't block navigation on signOut lock contention.
+      // Navigate immediately — don't block on signOut lock contention
       navigate("/auth", { replace: true });
-      toast({ title: "Password updated!", description: "Please log in with your new password." });
+      toast({
+        title: "Password updated successfully!",
+        description: "You've been logged out of all sessions. Please log in with your new password.",
+      });
+
+      // Sign out in background to invalidate sessions
       setTimeout(() => {
-        void supabase.auth.signOut({ scope: "local" }).catch(() => {
-          // no-op
-        });
+        void supabase.auth.signOut({ scope: "local" }).catch(() => {});
       }, 0);
     } catch (error: any) {
       const msg = error?.message || "Something went wrong";
@@ -123,7 +132,7 @@ export default function ResetPassword() {
         <Card className="w-full max-w-md">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            <p className="mt-4 text-sm text-muted-foreground">Verifying your reset link...</p>
+            <p className="mt-4 text-sm text-muted-foreground">Verifying your reset link…</p>
           </CardContent>
         </Card>
       </div>
@@ -136,17 +145,25 @@ export default function ResetPassword() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Invalid or Expired Link</CardTitle>
-            <CardDescription>This password reset link is invalid or has expired.</CardDescription>
+            <CardDescription>
+              This password reset link is invalid, expired, or has already been used.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Link to="/forgot-password">
               <Button className="w-full">Request a new link</Button>
+            </Link>
+            <Link to="/auth">
+              <Button variant="outline" className="w-full">Back to Login</Button>
             </Link>
           </CardContent>
         </Card>
       </div>
     );
   }
+
+  const passwordValid = validatePassword(password);
+  const passwordsMatch = password === confirmPassword && confirmPassword.length > 0;
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
@@ -168,7 +185,9 @@ export default function ResetPassword() {
         <Card>
           <CardHeader>
             <CardTitle>Set New Password</CardTitle>
-            <CardDescription>Enter your new password below.</CardDescription>
+            <CardDescription>
+              Choose a strong password for your account.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -179,22 +198,25 @@ export default function ResetPassword() {
                   <Input
                     id="new-password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="Min. 6 characters"
+                    placeholder="Enter new password"
                     className="pl-10 pr-10"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    minLength={6}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                <PasswordStrengthIndicator password={password} />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
                 <div className="relative">
@@ -207,12 +229,23 @@ export default function ResetPassword() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    minLength={6}
+                    autoComplete="new-password"
                   />
                 </div>
+                {confirmPassword && !passwordsMatch && (
+                  <p className="text-xs text-destructive">Passwords do not match</p>
+                )}
+                {passwordsMatch && (
+                  <p className="text-xs text-green-500">Passwords match ✓</p>
+                )}
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Updating..." : "Update Password"}
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || !passwordValid || !passwordsMatch}
+              >
+                {loading ? "Updating…" : "Update Password"}
               </Button>
             </form>
           </CardContent>
