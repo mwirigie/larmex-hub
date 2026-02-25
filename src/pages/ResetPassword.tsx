@@ -20,78 +20,96 @@ export default function ResetPassword() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    let isMounted = true;
+    let fallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+        setValidSession(true);
+        setChecking(false);
+      }
+    });
 
     const establishRecoverySession = async () => {
       try {
-        // 1. Try to extract tokens from URL hash (Supabase puts them there on redirect)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const searchParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+
+        const tokenHash = searchParams.get("token_hash") ?? hashParams.get("token_hash");
+        const type = (searchParams.get("type") ?? hashParams.get("type")) as "recovery" | null;
+        const code = searchParams.get("code");
         const accessToken = hashParams.get("access_token");
         const refreshToken = hashParams.get("refresh_token");
-        const type = hashParams.get("type");
 
+        // Flow A: token_hash + type=recovery (recommended)
+        if (tokenHash && type === "recovery") {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "recovery",
+          });
+          if (!error && isMounted) {
+            setValidSession(true);
+            setChecking(false);
+            window.history.replaceState(null, "", window.location.pathname);
+            return;
+          }
+        }
+
+        // Flow B: PKCE code exchange
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (!error && isMounted) {
+            setValidSession(true);
+            setChecking(false);
+            window.history.replaceState(null, "", window.location.pathname);
+            return;
+          }
+        }
+
+        // Flow C: implicit flow tokens in hash
         if (accessToken && refreshToken) {
-          // Explicitly set the session from the recovery tokens
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
           });
-          if (!error && !cancelled) {
+          if (!error && isMounted) {
             setValidSession(true);
-            // Clean up the hash from the URL
-            window.history.replaceState(null, "", window.location.pathname);
             setChecking(false);
+            window.history.replaceState(null, "", window.location.pathname);
             return;
           }
         }
 
-        // 2. Also check query params (some redirect formats use these)
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get("code");
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (!error && !cancelled) {
-            setValidSession(true);
-            window.history.replaceState(null, "", window.location.pathname);
-            setChecking(false);
-            return;
-          }
-        }
-
-        // 3. Check if there's already a valid session (user may have been redirected and session already set)
+        // Final fallback: already-established session
         const { data: { session } } = await supabase.auth.getSession();
-        if (session && !cancelled) {
+        if (session && isMounted) {
           setValidSession(true);
           setChecking(false);
           return;
         }
 
-        // 4. Listen for auth state changes as final fallback
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-          if (cancelled) return;
-          if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-            setValidSession(true);
-            setChecking(false);
-          }
-        });
-
-        // Wait a short time for the auth state change, then give up
-        setTimeout(() => {
-          if (!cancelled) {
-            setChecking(false);
-            subscription.unsubscribe();
-          }
-        }, 3000);
-
-        return () => subscription.unsubscribe();
-      } catch (err) {
-        console.error("Error establishing recovery session:", err);
-        if (!cancelled) setChecking(false);
+        fallbackTimer = setTimeout(() => {
+          if (!isMounted) return;
+          setValidSession(false);
+          setChecking(false);
+        }, 2500);
+      } catch (error) {
+        console.error("Recovery session bootstrap failed:", error);
+        if (isMounted) {
+          setValidSession(false);
+          setChecking(false);
+        }
       }
     };
 
     establishRecoverySession();
-    return () => { cancelled = true; };
+
+    return () => {
+      isMounted = false;
+      if (fallbackTimer) clearTimeout(fallbackTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,23 +122,43 @@ export default function ResetPassword() {
       toast({ title: "Password too short", description: "Minimum 6 characters.", variant: "destructive" });
       return;
     }
+
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) {
-        // Handle specific error for same password
-        if (error.message?.toLowerCase().includes("same password")) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Reset session expired",
+          description: "Please request a new password reset link and try again.",
+          variant: "destructive",
+        });
+        navigate("/forgot-password");
+        return;
+      }
+
+      const result = await Promise.race([
+        supabase.auth.updateUser({ password }),
+        new Promise<{ error: Error }>((resolve) =>
+          setTimeout(
+            () => resolve({ error: new Error("Password update timed out. Please request a new reset link.") }),
+            15000
+          )
+        ),
+      ]);
+
+      if (result.error) {
+        if (result.error.message?.toLowerCase().includes("same password")) {
           toast({
             title: "Choose a different password",
             description: "Your new password must be different from your current password.",
             variant: "destructive",
           });
         } else {
-          throw error;
+          throw result.error;
         }
         return;
       }
-      // Sign out after password change so user logs in fresh
+
       await supabase.auth.signOut();
       toast({ title: "Password updated!", description: "Please log in with your new password." });
       navigate("/auth");
