@@ -89,15 +89,30 @@ Deno.serve(async (req) => {
     }
 
     // Call PayHero STK Push
-    const channelId = Deno.env.get("PAYHERO_CHANNEL_ID");
-    const basicAuth = Deno.env.get("PAYHERO_BASIC_AUTH");
+    const rawChannelId = Deno.env.get("PAYHERO_CHANNEL_ID") || "";
+    const rawBasicAuth = Deno.env.get("PAYHERO_BASIC_AUTH") || "";
+    
+    // Trim whitespace/newlines that may have been added when saving the secret
+    const channelId = rawChannelId.trim();
+    const basicAuth = rawBasicAuth.trim();
+    
+    // Ensure the auth header has "Basic " prefix
+    const authHeader2 = basicAuth.startsWith("Basic ") ? basicAuth : `Basic ${basicAuth}`;
 
     const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payhero-callback`;
+
+    console.log("PayHero request:", {
+      channel_id: channelId,
+      phone_number: phone,
+      amount: Number(amount),
+      authHeaderPrefix: authHeader2.substring(0, 10) + "...",
+      callbackUrl,
+    });
 
     const payheroResponse = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
       method: "POST",
       headers: {
-        Authorization: basicAuth!,
+        "Authorization": authHeader2,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
