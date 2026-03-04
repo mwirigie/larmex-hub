@@ -15,11 +15,32 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log("PayHero callback received:", JSON.stringify(body));
 
-    const externalReference = body.external_reference || body.ExternalReference;
-    const status = body.status || body.Status;
+    // PayHero sends nested format: { status: true, response: { ExternalReference, Status, ResultCode, ... } }
+    // Also handle flat format as fallback
+    const response = body.response || body;
+    
+    const externalReference =
+      response.ExternalReference ||
+      response.external_reference ||
+      body.ExternalReference ||
+      body.external_reference;
 
-    if (!externalReference) {
-      console.error("No reference in callback");
+    const status =
+      response.Status ||
+      response.status ||
+      body.Status ||
+      body.status;
+
+    const resultCode =
+      response.ResultCode ??
+      response.result_code ??
+      body.ResultCode ??
+      body.result_code;
+
+    console.log("Parsed - reference:", externalReference, "status:", status, "resultCode:", resultCode);
+
+    if (!externalReference || typeof externalReference !== "string") {
+      console.error("No valid reference in callback");
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
@@ -28,14 +49,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Determine status
+    // Determine success: Status === "Success" OR ResultCode === 0
     const isSuccess =
+      status === "Success" ||
       status === "SUCCESS" ||
       status === "success" ||
-      body.ResultCode === 0 ||
-      body.result_code === 0;
+      resultCode === 0;
 
     const newStatus = isSuccess ? "completed" : "failed";
+    console.log("Determined payment status:", newStatus);
 
     // Update payment
     const { data: payment, error: updateError } = await adminClient
@@ -50,6 +72,8 @@ Deno.serve(async (req) => {
       return new Response("OK", { status: 200, headers: corsHeaders });
     }
 
+    console.log("Payment updated:", payment?.id, "to", newStatus);
+
     // If successful, create plan_purchase record to grant access
     if (isSuccess && payment) {
       const { error: purchaseError } = await adminClient.from("plan_purchases").insert({
@@ -63,10 +87,12 @@ Deno.serve(async (req) => {
 
       if (purchaseError) {
         console.error("Purchase insert error:", purchaseError);
+      } else {
+        console.log("Plan purchase created for user:", payment.user_id);
       }
 
       // Also create transaction record
-      await adminClient.from("transactions").insert({
+      const { error: txError } = await adminClient.from("transactions").insert({
         user_id: payment.user_id,
         type: "plan_purchase",
         amount_kes: payment.amount,
@@ -75,6 +101,10 @@ Deno.serve(async (req) => {
         reference: payment.reference,
         metadata: { plan_id: payment.plan_id },
       });
+
+      if (txError) {
+        console.error("Transaction insert error:", txError);
+      }
     }
 
     return new Response("OK", { status: 200, headers: corsHeaders });
