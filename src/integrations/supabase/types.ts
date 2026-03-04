@@ -189,6 +189,53 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          payhero_reference: string | null
+          phone: string
+          plan_id: string | null
+          reference: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          payhero_reference?: string | null
+          phone: string
+          plan_id?: string | null
+          reference: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          payhero_reference?: string | null
+          phone?: string
+          plan_id?: string | null
+          reference?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "house_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_purchases: {
         Row: {
           amount_kes: number
