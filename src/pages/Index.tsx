@@ -68,7 +68,7 @@ export default function Index() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-display text-xl font-bold text-foreground">Larmex Hub</span>
+            <span className="font-display text-xl font-bold text-foreground">Jenga Plans</span>
           </Link>
           <nav className="hidden items-center gap-6 md:flex">
             <Link to="/browse" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">Browse Plans</Link>
@@ -209,7 +209,7 @@ export default function Index() {
             variants={fadeUp}
             custom={0}
           >
-            <h2 className="font-display text-3xl font-bold text-foreground">Why Larmex Hub?</h2>
+            <h2 className="font-display text-3xl font-bold text-foreground">Why Jenga Plans?</h2>
             <p className="mt-2 text-muted-foreground">Everything you need to plan and build your home in Kenya.</p>
           </motion.div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -246,7 +246,7 @@ export default function Index() {
           >
             <h2 className="font-display text-3xl font-bold text-primary-foreground">Ready to Start Building?</h2>
             <p className="mx-auto mt-3 max-w-lg text-primary-foreground/80">
-              Join thousands of Kenyans who have found their perfect house plan and trusted professionals on Larmex Hub.
+              Join thousands of Kenyans who have found their perfect house plan and trusted professionals on Jenga Plans.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button size="lg" variant="secondary" asChild>
@@ -271,14 +271,14 @@ export default function Index() {
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <Building2 className="h-4 w-4 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-bold text-foreground">Larmex Hub</span>
+              <span className="font-display text-lg font-bold text-foreground">Jenga Plans</span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
               <Link to="/browse" className="hover:text-foreground transition-colors">Browse Plans</Link>
               <Link to="/professionals" className="hover:text-foreground transition-colors">Find Professionals</Link>
               <Link to="/calculator" className="hover:text-foreground transition-colors">Cost Calculator</Link>
             </div>
-            <p className="text-sm text-muted-foreground">© 2026 Larmex Hub. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© 2026 Jenga Plans. All rights reserved.</p>
           </div>
         </div>
       </footer>
