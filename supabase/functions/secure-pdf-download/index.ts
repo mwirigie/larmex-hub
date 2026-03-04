@@ -22,14 +22,16 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
     // Client with user's token for auth check
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
+    const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
     const { data: { user }, error: authError } = await userClient.auth.getUser();
     if (authError || !user) {
+      console.error("Auth error:", authError);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -51,12 +53,20 @@ Deno.serve(async (req) => {
     // Check plan exists and get pdf_url
     const { data: plan, error: planError } = await adminClient
       .from("house_plans")
-      .select("id, pdf_url, professional_id, title")
+      .select("id, pdf_url, professional_id, title, download_count")
       .eq("id", planId)
       .single();
 
-    if (planError || !plan || !plan.pdf_url) {
-      return new Response(JSON.stringify({ error: "Plan not found or no PDF available" }), {
+    if (planError || !plan) {
+      console.error("Plan fetch error:", planError);
+      return new Response(JSON.stringify({ error: "Plan not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!plan.pdf_url) {
+      return new Response(JSON.stringify({ error: "No PDF uploaded for this plan yet" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -93,11 +103,13 @@ Deno.serve(async (req) => {
     }
 
     // Generate signed URL (5 minutes)
+    console.log("Generating signed URL for:", plan.pdf_url);
     const { data: signedData, error: signedError } = await adminClient.storage
       .from("plan-pdfs")
       .createSignedUrl(plan.pdf_url, 300);
 
     if (signedError || !signedData?.signedUrl) {
+      console.error("Signed URL error:", signedError);
       return new Response(JSON.stringify({ error: "Failed to generate download link" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -111,14 +123,11 @@ Deno.serve(async (req) => {
       ip_address: req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || "unknown",
     });
 
-    // Increment download count
-    await adminClient.rpc("increment_download_count", { _plan_id: planId }).catch(() => {
-      // fallback: direct update
-      adminClient
-        .from("house_plans")
-        .update({ download_count: (plan as any).download_count ? (plan as any).download_count + 1 : 1 })
-        .eq("id", planId);
-    });
+    // Increment download count directly
+    await adminClient
+      .from("house_plans")
+      .update({ download_count: (plan.download_count || 0) + 1 })
+      .eq("id", planId);
 
     return new Response(
       JSON.stringify({
@@ -131,6 +140,7 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
+    console.error("Download error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
