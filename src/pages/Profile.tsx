@@ -157,7 +157,7 @@ export default function Profile() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-display text-lg font-bold">Larmex Hub</span>
+            <span className="font-display text-lg font-bold">Jenga Plans</span>
           </Link>
           <Button variant="ghost" size="sm" onClick={async () => { await signOut(); navigate("/"); }}>
             Sign Out

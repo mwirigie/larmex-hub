@@ -99,7 +99,7 @@ export default function BrowsePlans() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="hidden font-display text-lg font-bold text-foreground sm:inline">Larmex Hub</span>
+            <span className="hidden font-display text-lg font-bold text-foreground sm:inline">Jenga Plans</span>
           </Link>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

@@ -234,7 +234,7 @@ export default function PlanDetail() {
               />
               <div className="absolute inset-0 flex items-center justify-center">
                 <span className="rotate-[-30deg] font-display text-4xl font-bold text-muted-foreground/10 select-none pointer-events-none">
-                  LARMEX HUB PREVIEW
+                  JENGA PLANS PREVIEW
                 </span>
               </div>
               <Badge className="absolute left-4 top-4 capitalize">{plan.house_type}</Badge>
