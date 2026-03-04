@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
 import planPlaceholder from "@/assets/plan-placeholder.jpg";
+import PaymentModal from "@/components/PaymentModal";
 
 type HousePlan = Tables<"house_plans">;
 
@@ -31,6 +32,7 @@ export default function PlanDetail() {
   const [avgRating, setAvgRating] = useState(0);
   const [hasPurchased, setHasPurchased] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
 
   useEffect(() => {
     if (id) fetchPlan(id);
@@ -132,7 +134,11 @@ export default function PlanDetail() {
       navigate("/auth");
       return;
     }
-    toast({ title: "Coming soon", description: "M-Pesa payment integration is coming soon!" });
+    setPaymentOpen(true);
+  };
+
+  const handlePaymentSuccess = () => {
+    setHasPurchased(true);
   };
 
   const handleSecureDownload = async () => {
@@ -394,6 +400,17 @@ export default function PlanDetail() {
           )}
         </div>
       </div>
+
+      {plan && (
+        <PaymentModal
+          open={paymentOpen}
+          onOpenChange={setPaymentOpen}
+          planTitle={plan.title}
+          planId={plan.id}
+          amount={plan.price_kes}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }
