@@ -2,3 +2,12 @@ project_id = "qrssqdhhwnlmblgeidxe"
 
 [functions.secure-pdf-download]
 verify_jwt = false
+
+[functions.payhero-initiate]
+verify_jwt = false
+
+[functions.payhero-callback]
+verify_jwt = false
+
+[functions.payhero-status]
+verify_jwt = false
