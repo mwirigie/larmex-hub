@@ -448,6 +448,7 @@ export default function ProfessionalDashboard() {
                       <p className="text-sm text-muted-foreground">Click the camera icon to update your profile picture</p>
                     </div>
                   </div>
+                  <form onSubmit={handleSaveProfile} className="space-y-4">
                     <div className="space-y-2">
                       <Label className="font-medium">Categories *</Label>
                       <div className="grid grid-cols-2 gap-2">
