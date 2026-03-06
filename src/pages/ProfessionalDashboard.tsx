@@ -150,6 +150,21 @@ export default function ProfessionalDashboard() {
     setLoading(false);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const filePath = `${user.id}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("user_id", user.id);
+    setAvatarUrl(publicUrl);
+    toast({ title: "Profile picture updated!" });
+  };
+
   const handleDeletePlan = async (planId: string) => {
     if (!confirm("Delete this plan permanently?")) return;
     setDeletingPlan(planId);
