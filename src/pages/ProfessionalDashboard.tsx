@@ -428,7 +428,26 @@ export default function ProfessionalDashboard() {
                   <CardTitle className="text-lg">Professional Profile</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <form onSubmit={handleSaveProfile} className="space-y-4">
+                  {/* Profile Picture Upload */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative">
+                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                        ) : (
+                          <Camera className="h-8 w-8 text-primary" />
+                        )}
+                      </div>
+                      <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Camera className="h-3.5 w-3.5" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                      </label>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{fullName || "Your Name"}</p>
+                      <p className="text-sm text-muted-foreground">Click the camera icon to update your profile picture</p>
+                    </div>
+                  </div>
                     <div className="space-y-2">
                       <Label className="font-medium">Categories *</Label>
                       <div className="grid grid-cols-2 gap-2">
