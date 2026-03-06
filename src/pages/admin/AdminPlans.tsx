@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Loader2, Check, X, Eye, Search, Star } from "lucide-react";
+import { Loader2, Check, X, Eye, Search, Star, BedDouble, Bath, Maximize, MapPin, Layers, DollarSign, FileText, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import planPlaceholder from "@/assets/plan-placeholder.jpg";
@@ -15,6 +17,8 @@ interface PlanRow {
   house_type: string;
   bedrooms: number;
   bathrooms: number;
+  floors: number;
+  area_sqm: number | null;
   price_kes: number;
   status: string;
   thumbnail_url: string | null;
@@ -25,6 +29,19 @@ interface PlanRow {
   download_count: number;
   plan_code: string | null;
   is_featured: boolean;
+  description: string | null;
+  short_description: string | null;
+  features: string[] | null;
+  images: string[] | null;
+  land_size: string | null;
+  estimated_cost: number | null;
+  style: string | null;
+  pdf_url: string | null;
+}
+
+interface ProfessionalInfo {
+  full_name: string;
+  email: string | null;
 }
 
 export default function AdminPlans() {
@@ -34,6 +51,9 @@ export default function AdminPlans() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState<PlanRow | null>(null);
+  const [profInfo, setProfInfo] = useState<ProfessionalInfo | null>(null);
+  const [loadingProf, setLoadingProf] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -43,7 +63,7 @@ export default function AdminPlans() {
     setLoading(true);
     let query = supabase
       .from("house_plans")
-      .select("id, title, house_type, bedrooms, bathrooms, price_kes, status, thumbnail_url, county, created_at, professional_id, view_count, download_count, plan_code, is_featured")
+      .select("*")
       .order("created_at", { ascending: false });
 
     if (filter === "pending" || filter === "approved" || filter === "rejected" || filter === "draft") {
@@ -51,8 +71,21 @@ export default function AdminPlans() {
     }
 
     const { data } = await query;
-    setPlans(data || []);
+    setPlans((data as PlanRow[]) || []);
     setLoading(false);
+  };
+
+  const openInspect = async (plan: PlanRow) => {
+    setInspecting(plan);
+    setProfInfo(null);
+    setLoadingProf(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("full_name, email")
+      .eq("user_id", plan.professional_id)
+      .single();
+    setProfInfo(data || { full_name: "Unknown", email: null });
+    setLoadingProf(false);
   };
 
   const updateStatus = async (planId: string, status: "approved" | "rejected") => {
@@ -63,6 +96,7 @@ export default function AdminPlans() {
     } else {
       toast({ title: `Plan ${status}` });
       setPlans(prev => prev.map(p => p.id === planId ? { ...p, status } : p));
+      if (inspecting?.id === planId) setInspecting(prev => prev ? { ...prev, status } : null);
     }
     setUpdating(null);
   };
@@ -76,6 +110,7 @@ export default function AdminPlans() {
     } else {
       toast({ title: "Plan deleted" });
       setPlans(prev => prev.filter(p => p.id !== planId));
+      if (inspecting?.id === planId) setInspecting(null);
     }
     setUpdating(null);
   };
@@ -91,6 +126,7 @@ export default function AdminPlans() {
     }
     setUpdating(null);
   };
+
   const filtered = plans.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
 
   const statusColor = (s: string) => {
@@ -151,6 +187,9 @@ export default function AdminPlans() {
                 <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                   {plan.is_featured && <Badge className="bg-amber-500/10 text-amber-600"><Star className="h-3 w-3 mr-1" />Featured</Badge>}
                   <Badge className={`${statusColor(plan.status)} capitalize`}>{plan.status}</Badge>
+                  <Button size="sm" variant="outline" onClick={() => openInspect(plan)}>
+                    <Eye className="h-3.5 w-3.5 mr-1" /> Inspect
+                  </Button>
                   {plan.status === "pending" && (
                     <>
                       <Button size="sm" variant="outline" className="text-emerald-600" onClick={() => updateStatus(plan.id, "approved")} disabled={updating === plan.id}>
@@ -176,6 +215,177 @@ export default function AdminPlans() {
           ))}
         </div>
       )}
+
+      {/* Plan Inspection Dialog */}
+      <Dialog open={!!inspecting} onOpenChange={(open) => !open && setInspecting(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          {inspecting && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">{inspecting.title}</DialogTitle>
+                <DialogDescription>
+                  {inspecting.plan_code && <span className="font-mono mr-2">{inspecting.plan_code}</span>}
+                  <Badge className={`${statusColor(inspecting.status)} capitalize`}>{inspecting.status}</Badge>
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Thumbnail & Images */}
+              <div className="space-y-3">
+                <img
+                  src={inspecting.thumbnail_url || planPlaceholder}
+                  alt={inspecting.title}
+                  className="w-full max-h-64 object-cover rounded-lg"
+                />
+                {inspecting.images && inspecting.images.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {inspecting.images.map((img, i) => (
+                      <img key={i} src={img} alt={`Plan image ${i + 1}`} className="aspect-video w-full object-cover rounded-lg border border-border" />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Key Details */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                  <BedDouble className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Bedrooms</p>
+                    <p className="font-semibold text-foreground">{inspecting.bedrooms}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                  <Bath className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Bathrooms</p>
+                    <p className="font-semibold text-foreground">{inspecting.bathrooms}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                  <Layers className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Floors</p>
+                    <p className="font-semibold text-foreground">{inspecting.floors}</p>
+                  </div>
+                </div>
+                {inspecting.area_sqm && (
+                  <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                    <Maximize className="h-4 w-4 text-primary shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Area</p>
+                      <p className="font-semibold text-foreground">{inspecting.area_sqm} m²</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                  <DollarSign className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Price</p>
+                    <p className="font-semibold text-foreground">KES {inspecting.price_kes.toLocaleString()}</p>
+                  </div>
+                </div>
+                {inspecting.estimated_cost && (
+                  <div className="flex items-center gap-2 rounded-lg border border-border p-3">
+                    <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Est. Build Cost</p>
+                      <p className="font-semibold text-foreground">KES {inspecting.estimated_cost.toLocaleString()}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Additional Info */}
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <MapPin className="h-4 w-4" />
+                  <span>County: {inspecting.county || "Not specified"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>Uploaded: {new Date(inspecting.created_at).toLocaleDateString()}</span>
+                </div>
+                {inspecting.house_type && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="h-4 w-4" />
+                    <span>Type: <span className="capitalize">{inspecting.house_type}</span></span>
+                    {inspecting.style && <span>· Style: {inspecting.style}</span>}
+                  </div>
+                )}
+                {inspecting.land_size && (
+                  <div className="text-muted-foreground">Land Size: {inspecting.land_size}</div>
+                )}
+                <div className="text-muted-foreground">
+                  PDF: {inspecting.pdf_url ? <Badge variant="secondary">Uploaded</Badge> : <Badge variant="outline">Not uploaded</Badge>}
+                </div>
+              </div>
+
+              {/* Description */}
+              {(inspecting.short_description || inspecting.description) && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-1">Description</h4>
+                    {inspecting.short_description && <p className="text-sm text-muted-foreground mb-2">{inspecting.short_description}</p>}
+                    {inspecting.description && <p className="text-sm text-muted-foreground whitespace-pre-line">{inspecting.description}</p>}
+                  </div>
+                </>
+              )}
+
+              {/* Features */}
+              {inspecting.features && inspecting.features.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold text-foreground mb-2">Features</h4>
+                    <div className="flex flex-wrap gap-1.5">
+                      {inspecting.features.map((f, i) => (
+                        <Badge key={i} variant="secondary">{f}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Professional Info */}
+              <Separator />
+              <div>
+                <h4 className="font-semibold text-foreground mb-1">Uploaded By</h4>
+                {loadingProf ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                ) : profInfo ? (
+                  <p className="text-sm text-muted-foreground">{profInfo.full_name}{profInfo.email && ` · ${profInfo.email}`}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Unknown</p>
+                )}
+              </div>
+
+              {/* Stats */}
+              <div className="flex gap-4 text-sm text-muted-foreground">
+                <span>{inspecting.view_count} views</span>
+                <span>{inspecting.download_count} downloads</span>
+              </div>
+
+              {/* Actions */}
+              {inspecting.status === "pending" && (
+                <>
+                  <Separator />
+                  <div className="flex gap-3">
+                    <Button className="flex-1" onClick={() => updateStatus(inspecting.id, "approved")} disabled={updating === inspecting.id}>
+                      <Check className="h-4 w-4 mr-2" /> Approve Plan
+                    </Button>
+                    <Button variant="destructive" className="flex-1" onClick={() => updateStatus(inspecting.id, "rejected")} disabled={updating === inspecting.id}>
+                      <X className="h-4 w-4 mr-2" /> Reject Plan
+                    </Button>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

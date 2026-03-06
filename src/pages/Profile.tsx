@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, User, Mail, Phone, MapPin, Save, Loader2, Camera, Shield, Briefcase, Globe } from "lucide-react";
+import { Building2, User, Mail, Phone, MapPin, Save, Loader2, Camera, Shield, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ interface ProfessionalProfile {
   years_experience: number | null;
   specializations: string[] | null;
   service_counties: string[] | null;
-  website: string | null;
+  
 }
 
 export default function Profile() {
@@ -90,7 +90,7 @@ export default function Profile() {
           years_experience: pp.years_experience,
           specializations: pp.specializations,
           service_counties: pp.service_counties,
-          website: pp.website,
+          
         });
       }
     }
@@ -280,15 +280,6 @@ export default function Profile() {
                               <p className="font-medium text-foreground">{profProfile.years_experience ?? 0} years</p>
                             </div>
                           </div>
-                          {profProfile.website && (
-                            <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                              <Globe className="h-5 w-5 text-primary" />
-                              <div>
-                                <p className="text-xs text-muted-foreground">Website</p>
-                                <a href={profProfile.website} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{profProfile.website}</a>
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         {profProfile.specializations && profProfile.specializations.length > 0 && (

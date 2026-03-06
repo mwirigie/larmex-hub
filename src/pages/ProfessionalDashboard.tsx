@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, Save, Loader2, Camera, Shield, Briefcase, Globe, Plus, X, Upload, Star, Check, XCircle, Clock, ArrowLeft, LogOut, FileText, Eye, DollarSign, MessageSquare, Trash2, Edit } from "lucide-react";
+import { Building2, Save, Loader2, Camera, Shield, Briefcase, Plus, X, Upload, Star, Check, XCircle, Clock, ArrowLeft, LogOut, FileText, Eye, DollarSign, MessageSquare, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,7 @@ export default function ProfessionalDashboard() {
   const [yearsExperience, setYearsExperience] = useState("");
   const [startingPrice, setStartingPrice] = useState("");
   const [bio, setBio] = useState("");
-  const [website, setWebsite] = useState("");
+  
   const [companyName, setCompanyName] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedCounties, setSelectedCounties] = useState<string[]>([]);
@@ -111,7 +111,7 @@ export default function ProfessionalDashboard() {
       setYearsExperience(p.years_experience?.toString() || "");
       setStartingPrice(p.starting_price?.toString() || "");
       setBio(p.bio || "");
-      setWebsite(p.website || "");
+      
       setCompanyName(p.company_name || "");
       setSelectedCategories(p.specializations || []);
       setSelectedCounties(p.service_counties || []);
@@ -167,7 +167,7 @@ export default function ProfessionalDashboard() {
         years_experience: yearsExperience ? Number(yearsExperience) : null,
         starting_price: startingPrice ? Number(startingPrice) : null,
         bio: bio || null,
-        website: website || null,
+        
         company_name: companyName || null,
         specializations: selectedCategories as any,
         service_counties: selectedCounties,
@@ -443,11 +443,6 @@ export default function ProfessionalDashboard() {
                     <div className="space-y-2">
                       <Label>Bio</Label>
                       <Textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell clients about yourself..." rows={3} />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Website</Label>
-                      <Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://yoursite.com" />
                     </div>
 
                     <div className="space-y-2">

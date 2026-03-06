@@ -73,7 +73,7 @@ export default function AuthPage() {
       } else if (roleData?.role === "admin") {
         navigate("/ctrl-panel-lmx");
       } else {
-        navigate("/dashboard");
+        navigate("/browse");
       }
     } catch (error: any) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
