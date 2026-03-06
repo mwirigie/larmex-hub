@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, BadgeCheck, Briefcase, MapPin, Star, Globe, Shield, DollarSign, Building2, Loader2, Calendar } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, MapPin, Star, Shield, DollarSign, Building2, Loader2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,7 +25,7 @@ interface ProfData {
   license_number: string | null;
   starting_price: number | null;
   bio: string | null;
-  website: string | null;
+  
   portfolio: any[];
 }
 
@@ -296,15 +296,6 @@ export default function ProfessionalPublicProfile() {
                       <div>
                         <p className="text-xs text-muted-foreground">License Number</p>
                         <p className="font-medium text-foreground">{prof.license_number}</p>
-                      </div>
-                    </div>
-                  )}
-                  {prof.website && (
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-primary" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Website</p>
-                        <a href={prof.website} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">{prof.website}</a>
                       </div>
                     </div>
                   )}
