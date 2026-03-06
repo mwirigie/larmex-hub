@@ -100,12 +100,12 @@ export default function ProfessionalDashboard() {
     if (!user) return;
     setLoading(true);
 
-    const [profRes, profileRes, reqRes, plansRes, salesRes] = await Promise.all([
+    const [profRes, profileRes, reqRes, plansRes, statsRes] = await Promise.all([
       supabase.from("professional_profiles").select("*").eq("user_id", user.id).single(),
       supabase.from("profiles").select("avatar_url, full_name").eq("user_id", user.id).single(),
       supabase.from("project_requests").select("*").eq("professional_id", user.id).order("created_at", { ascending: false }),
       supabase.from("house_plans").select("id, title, house_type, status, price_kes, view_count, plan_code, thumbnail_url, created_at, download_count").eq("professional_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("plan_purchases").select("plan_id, amount_kes, status").eq("status", "paid"),
+      supabase.rpc("get_professional_sales_stats", { _professional_id: user.id }),
     ]);
 
     if (profileRes.data) {
@@ -130,11 +130,15 @@ export default function ProfessionalDashboard() {
     // Plans
     setMyPlans((plansRes.data as any) || []);
 
-    // Sales & earnings for this professional's plans
-    const planIds = new Set((plansRes.data || []).map((p: any) => p.id));
-    const mySales = (salesRes.data || []).filter((s: any) => planIds.has(s.plan_id));
-    setTotalSales(mySales.length);
-    setTotalEarnings(mySales.reduce((sum: number, s: any) => sum + Number(s.amount_kes || 0), 0));
+    // Sales & earnings from secure RPC
+    const stats = statsRes.data;
+    if (Array.isArray(stats) && stats.length > 0) {
+      setTotalSales(Number(stats[0].total_sales || 0));
+      setTotalEarnings(Number(stats[0].total_earnings || 0));
+    } else {
+      setTotalSales(0);
+      setTotalEarnings(0);
+    }
 
     // Enrich requests with client names
     const reqs = reqRes.data || [];
