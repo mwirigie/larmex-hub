@@ -75,6 +75,8 @@ export default function ProfessionalDashboard() {
   const [verificationStatus, setVerificationStatus] = useState("pending");
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [fullName, setFullName] = useState("");
 
   // Requests
   const [requests, setRequests] = useState<ProjectRequest[]>([]);
@@ -98,12 +100,18 @@ export default function ProfessionalDashboard() {
     if (!user) return;
     setLoading(true);
 
-    const [profRes, reqRes, plansRes, salesRes] = await Promise.all([
+    const [profRes, profileRes, reqRes, plansRes, salesRes] = await Promise.all([
       supabase.from("professional_profiles").select("*").eq("user_id", user.id).single(),
+      supabase.from("profiles").select("avatar_url, full_name").eq("user_id", user.id).single(),
       supabase.from("project_requests").select("*").eq("professional_id", user.id).order("created_at", { ascending: false }),
       supabase.from("house_plans").select("id, title, house_type, status, price_kes, view_count, plan_code, thumbnail_url, created_at, download_count").eq("professional_id", user.id).order("created_at", { ascending: false }),
       supabase.from("plan_purchases").select("plan_id, amount_kes, status").eq("status", "paid"),
     ]);
+
+    if (profileRes.data) {
+      setAvatarUrl(profileRes.data.avatar_url);
+      setFullName(profileRes.data.full_name || "");
+    }
 
     if (profRes.data) {
       const p = profRes.data;
