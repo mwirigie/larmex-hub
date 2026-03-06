@@ -75,6 +75,8 @@ export default function ProfessionalDashboard() {
   const [verificationStatus, setVerificationStatus] = useState("pending");
   const [portfolio, setPortfolio] = useState<any[]>([]);
   const [uploadingPortfolio, setUploadingPortfolio] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [fullName, setFullName] = useState("");
 
   // Requests
   const [requests, setRequests] = useState<ProjectRequest[]>([]);
@@ -98,12 +100,18 @@ export default function ProfessionalDashboard() {
     if (!user) return;
     setLoading(true);
 
-    const [profRes, reqRes, plansRes, salesRes] = await Promise.all([
+    const [profRes, profileRes, reqRes, plansRes, salesRes] = await Promise.all([
       supabase.from("professional_profiles").select("*").eq("user_id", user.id).single(),
+      supabase.from("profiles").select("avatar_url, full_name").eq("user_id", user.id).single(),
       supabase.from("project_requests").select("*").eq("professional_id", user.id).order("created_at", { ascending: false }),
       supabase.from("house_plans").select("id, title, house_type, status, price_kes, view_count, plan_code, thumbnail_url, created_at, download_count").eq("professional_id", user.id).order("created_at", { ascending: false }),
       supabase.from("plan_purchases").select("plan_id, amount_kes, status").eq("status", "paid"),
     ]);
+
+    if (profileRes.data) {
+      setAvatarUrl(profileRes.data.avatar_url);
+      setFullName(profileRes.data.full_name || "");
+    }
 
     if (profRes.data) {
       const p = profRes.data;
@@ -140,6 +148,21 @@ export default function ProfessionalDashboard() {
     }
 
     setLoading(false);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const filePath = `${user.id}/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: "Upload failed", description: uploadError.message, variant: "destructive" });
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("user_id", user.id);
+    setAvatarUrl(publicUrl);
+    toast({ title: "Profile picture updated!" });
   };
 
   const handleDeletePlan = async (planId: string) => {
@@ -405,6 +428,26 @@ export default function ProfessionalDashboard() {
                   <CardTitle className="text-lg">Professional Profile</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  {/* Profile Picture Upload */}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative">
+                      <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-primary/10">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                        ) : (
+                          <Camera className="h-8 w-8 text-primary" />
+                        )}
+                      </div>
+                      <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Camera className="h-3.5 w-3.5" />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                      </label>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{fullName || "Your Name"}</p>
+                      <p className="text-sm text-muted-foreground">Click the camera icon to update your profile picture</p>
+                    </div>
+                  </div>
                   <form onSubmit={handleSaveProfile} className="space-y-4">
                     <div className="space-y-2">
                       <Label className="font-medium">Categories *</Label>
