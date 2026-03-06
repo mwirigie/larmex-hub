@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, Save, Loader2, Camera, Shield, Briefcase, Globe, Plus, X, Upload, Star, Check, XCircle, Clock, ArrowLeft, LogOut, FileText, Eye, DollarSign, MessageSquare, Trash2, Edit } from "lucide-react";
+import { Building2, Save, Loader2, Camera, Shield, Briefcase, Plus, X, Upload, Star, Check, XCircle, Clock, ArrowLeft, LogOut, FileText, Eye, DollarSign, MessageSquare, Trash2, Edit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
