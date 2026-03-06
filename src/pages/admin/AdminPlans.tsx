@@ -317,8 +317,27 @@ export default function AdminPlans() {
                 {inspecting.land_size && (
                   <div className="text-muted-foreground">Land Size: {inspecting.land_size}</div>
                 )}
-                <div className="text-muted-foreground">
-                  PDF: {inspecting.pdf_url ? <Badge variant="secondary">Uploaded</Badge> : <Badge variant="outline">Not uploaded</Badge>}
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  PDF: {inspecting.pdf_url ? (
+                    <>
+                      <Badge variant="secondary">Uploaded</Badge>
+                      <Button size="sm" variant="outline" className="ml-1" onClick={async () => {
+                        try {
+                          const { data: { session } } = await supabase.auth.getSession();
+                          if (!session) return;
+                          const res = await fetch(
+                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/secure-pdf-download?plan_id=${inspecting.id}`,
+                            { headers: { Authorization: `Bearer ${session.access_token}` } }
+                          );
+                          const json = await res.json();
+                          if (json.url) window.open(json.url, "_blank");
+                          else toast({ title: "Error", description: json.error || "Could not load PDF", variant: "destructive" });
+                        } catch { toast({ title: "Error", description: "Failed to load PDF", variant: "destructive" }); }
+                      }}>
+                        <FileText className="h-3.5 w-3.5 mr-1" /> View PDF
+                      </Button>
+                    </>
+                  ) : <Badge variant="outline">Not uploaded</Badge>}
                 </div>
               </div>
 
