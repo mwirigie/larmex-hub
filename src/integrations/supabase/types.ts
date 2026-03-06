@@ -558,6 +558,13 @@ export type Database = {
         Args: { _professional_id: string }
         Returns: number
       }
+      get_professional_sales_stats: {
+        Args: { _professional_id: string }
+        Returns: {
+          total_earnings: number
+          total_sales: number
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
