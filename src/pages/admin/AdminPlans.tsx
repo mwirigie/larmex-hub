@@ -102,15 +102,27 @@ export default function AdminPlans() {
   };
 
   const deletePlan = async (planId: string) => {
-    if (!confirm("Delete this plan permanently?")) return;
+    if (!confirm("Delete this plan permanently? This will also remove all related payments, purchases, favorites, downloads, and reviews.")) return;
     setUpdating(planId);
-    const { error } = await supabase.from("house_plans").delete().eq("id", planId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Plan deleted" });
-      setPlans(prev => prev.filter(p => p.id !== planId));
-      if (inspecting?.id === planId) setInspecting(null);
+    try {
+      // Delete dependent records first to avoid foreign key constraint errors
+      await Promise.all([
+        supabase.from("payments").delete().eq("plan_id", planId),
+        supabase.from("plan_purchases").delete().eq("plan_id", planId),
+        supabase.from("favorites").delete().eq("plan_id", planId),
+        supabase.from("download_logs").delete().eq("plan_id", planId),
+        supabase.from("reviews").delete().eq("plan_id", planId),
+      ]);
+      const { error } = await supabase.from("house_plans").delete().eq("id", planId);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Plan deleted" });
+        setPlans(prev => prev.filter(p => p.id !== planId));
+        if (inspecting?.id === planId) setInspecting(null);
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete plan", variant: "destructive" });
     }
     setUpdating(null);
   };
